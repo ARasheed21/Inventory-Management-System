@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<JavaFormatter>
+    <version>1.0</version>
+    <lineEnding>LF</lineEnding>
+    <indentation>
+        <tab>false</tab>
+        <size>4</size>
+    </indentation>
+    <braces>
+        <classBrace>nextLine</classBrace>
+        <methodBrace>nextLine</methodBrace>
+    </braces>
+</JavaFormatter>

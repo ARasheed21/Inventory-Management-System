@@ -1,0 +1,8 @@
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/inventory_db}
+    username: ${DB_USERNAME:inventory}
+    password: ${DB_PASSWORD:inventory}
+  jpa:
+    hibernate:
+      ddl-auto: update
