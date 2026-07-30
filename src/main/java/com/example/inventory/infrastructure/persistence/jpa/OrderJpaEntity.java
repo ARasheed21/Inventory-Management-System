@@ -16,8 +16,11 @@ import jakarta.persistence.Version;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.hibernate.envers.Audited;
+
 @Entity
 @Table(name = "orders")
+@Audited
 public class OrderJpaEntity {
 
     @Id

@@ -11,8 +11,11 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
+import org.hibernate.envers.Audited;
+
 @Entity
 @Table(name = "order_items")
+@Audited
 public class OrderItemJpaEntity {
 
     @Id
@@ -38,7 +41,8 @@ public class OrderItemJpaEntity {
     protected OrderItemJpaEntity() {
     }
 
-    public OrderItemJpaEntity(OrderJpaEntity order, String productId, Integer quantity, BigDecimal unitPrice, String sku) {
+    public OrderItemJpaEntity(OrderJpaEntity order, String productId, Integer quantity, BigDecimal unitPrice,
+            String sku) {
         this.order = order;
         this.productId = productId;
         this.quantity = quantity;

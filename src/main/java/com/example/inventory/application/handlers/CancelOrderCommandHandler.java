@@ -1,10 +1,13 @@
 package com.example.inventory.application.handlers;
 
+import org.springframework.stereotype.Component;
+
 import com.example.inventory.application.commands.CancelOrderCommand;
 import com.example.inventory.application.dto.OrderResponse;
 import com.example.inventory.domain.entities.Order;
 import com.example.inventory.domain.repositories.OrderRepository;
 
+@Component
 public class CancelOrderCommandHandler {
     private final OrderRepository orderRepository;
 
