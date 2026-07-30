@@ -2,6 +2,12 @@ package com.example.inventory.domain;
 
 import org.junit.jupiter.api.Test;
 
+import com.example.inventory.domain.entities.Order;
+import com.example.inventory.domain.valueobjects.Money;
+import com.example.inventory.domain.valueobjects.OrderItem;
+import com.example.inventory.domain.valueobjects.OrderStatus;
+import com.example.inventory.domain.valueobjects.SKU;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;

@@ -1,4 +1,4 @@
-package com.example.inventory.domain;
+package com.example.inventory.domain.valueobjects;
 
 public enum OrderStatus {
     PENDING,

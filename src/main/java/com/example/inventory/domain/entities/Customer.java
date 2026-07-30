@@ -1,4 +1,6 @@
-package com.example.inventory.domain;
+package com.example.inventory.domain.entities;
+
+import com.example.inventory.domain.valueobjects.Address;
 
 public class Customer {
     private final String id;

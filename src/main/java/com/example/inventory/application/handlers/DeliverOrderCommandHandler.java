@@ -2,8 +2,8 @@ package com.example.inventory.application.handlers;
 
 import com.example.inventory.application.commands.DeliverOrderCommand;
 import com.example.inventory.application.dto.OrderResponse;
-import com.example.inventory.domain.Order;
-import com.example.inventory.domain.OrderRepository;
+import com.example.inventory.domain.entities.Order;
+import com.example.inventory.domain.repositories.OrderRepository;
 
 public class DeliverOrderCommandHandler {
     private final OrderRepository orderRepository;

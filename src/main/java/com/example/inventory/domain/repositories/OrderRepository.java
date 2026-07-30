@@ -1,7 +1,9 @@
-package com.example.inventory.domain;
+package com.example.inventory.domain.repositories;
 
 import java.util.List;
 import java.util.Optional;
+
+import com.example.inventory.domain.entities.Order;
 
 public interface OrderRepository {
     Order save(Order order);

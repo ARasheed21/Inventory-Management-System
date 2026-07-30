@@ -1,4 +1,4 @@
-package com.example.inventory.domain;
+package com.example.inventory.domain.valueobjects;
 
 public record SKU(String value) {
 

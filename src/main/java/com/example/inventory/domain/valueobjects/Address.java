@@ -1,4 +1,4 @@
-package com.example.inventory.domain;
+package com.example.inventory.domain.valueobjects;
 
 public record Address(String street, String city, String state, String postalCode, String country) {
 

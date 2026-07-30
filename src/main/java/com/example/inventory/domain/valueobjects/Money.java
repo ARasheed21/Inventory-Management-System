@@ -1,4 +1,4 @@
-package com.example.inventory.domain;
+package com.example.inventory.domain.valueobjects;
 
 import java.math.BigDecimal;
 import java.util.Objects;

@@ -14,12 +14,13 @@ import com.example.inventory.application.handlers.PlaceOrderCommandHandler;
 import com.example.inventory.application.handlers.ProcessPaymentCommandHandler;
 import com.example.inventory.application.queries.GetInventoryQuery;
 import com.example.inventory.application.queries.GetOrderQuery;
-import com.example.inventory.domain.Money;
-import com.example.inventory.domain.Order;
-import com.example.inventory.domain.OrderRepository;
-import com.example.inventory.domain.OrderStatus;
-import com.example.inventory.domain.Product;
-import com.example.inventory.domain.ProductRepository;
+import com.example.inventory.domain.entities.Order;
+import com.example.inventory.domain.entities.Product;
+import com.example.inventory.domain.repositories.OrderRepository;
+import com.example.inventory.domain.repositories.ProductRepository;
+import com.example.inventory.domain.valueobjects.Money;
+import com.example.inventory.domain.valueobjects.OrderStatus;
+
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;

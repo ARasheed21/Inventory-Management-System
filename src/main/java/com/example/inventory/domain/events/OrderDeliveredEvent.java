@@ -1,4 +1,4 @@
-package com.example.inventory.domain;
+package com.example.inventory.domain.events;
 
 import java.time.Instant;
 

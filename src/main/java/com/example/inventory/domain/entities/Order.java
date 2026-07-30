@@ -1,10 +1,21 @@
-package com.example.inventory.domain;
+package com.example.inventory.domain.entities;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+
+import com.example.inventory.domain.events.DomainEvent;
+import com.example.inventory.domain.events.OrderCancelledEvent;
+import com.example.inventory.domain.events.OrderCreatedEvent;
+import com.example.inventory.domain.events.OrderDeliveredEvent;
+import com.example.inventory.domain.events.OrderPaidEvent;
+import com.example.inventory.domain.events.OrderShippedEvent;
+import com.example.inventory.domain.events.ReservationExpiredEvent;
+import com.example.inventory.domain.valueobjects.Address;
+import com.example.inventory.domain.valueobjects.OrderItem;
+import com.example.inventory.domain.valueobjects.OrderStatus;
 
 public class Order {
     private final String id;

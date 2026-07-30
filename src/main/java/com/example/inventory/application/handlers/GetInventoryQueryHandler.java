@@ -2,8 +2,8 @@ package com.example.inventory.application.handlers;
 
 import com.example.inventory.application.dto.InventoryItemResponse;
 import com.example.inventory.application.queries.GetInventoryQuery;
-import com.example.inventory.domain.Product;
-import com.example.inventory.domain.ProductRepository;
+import com.example.inventory.domain.entities.Product;
+import com.example.inventory.domain.repositories.ProductRepository;
 
 import java.util.List;
 

@@ -1,4 +1,6 @@
-package com.example.inventory.domain;
+package com.example.inventory.domain.entities;
+
+import com.example.inventory.domain.valueobjects.Money;
 
 public class Product {
     private final String id;
