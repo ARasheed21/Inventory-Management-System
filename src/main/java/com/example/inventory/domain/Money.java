@@ -14,6 +14,10 @@ public record Money(BigDecimal amount, String currency) {
         }
     }
 
+    public Money(String amount, String currency) {
+        this(new BigDecimal(amount), currency == null ? null : currency.toUpperCase());
+    }
+
     public static Money of(String amount, String currency) {
         return new Money(new BigDecimal(amount), currency.toUpperCase());
     }
