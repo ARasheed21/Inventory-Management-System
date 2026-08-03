@@ -30,4 +30,22 @@ public class JpaProductRepository implements ProductRepository {
     public List<Product> findAll() {
         return productJpaEntityRepository.findAll().stream().map(productJpaMapper::toDomain).toList();
     }
+
+    @Override
+    @Transactional
+    public Product save(Product product) {
+        ProductJpaEntity entity = productJpaEntityRepository.findByExternalId(product.getId())
+                .orElseGet(() -> productJpaMapper.toEntity(product));
+
+        entity.setExternalId(product.getId());
+        entity.setName(product.getName());
+        entity.setDescription(product.getDescription());
+        entity.setPrice(product.getPrice().amount());
+        entity.setCurrency(product.getPrice().currency());
+        entity.setQuantityInStock(product.getQuantityInStock());
+        entity.setVersion(product.getVersion());
+
+        ProductJpaEntity savedEntity = productJpaEntityRepository.save(entity);
+        return productJpaMapper.toDomain(savedEntity);
+    }
 }

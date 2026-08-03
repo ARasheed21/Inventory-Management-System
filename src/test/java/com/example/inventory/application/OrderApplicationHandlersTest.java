@@ -168,5 +168,12 @@ class OrderApplicationHandlersTest {
         public List<Product> findAll() {
             return List.copyOf(products);
         }
+
+        @Override
+        public Product save(Product product) {
+            products.removeIf(existing -> existing.getId().equals(product.getId()));
+            products.add(product);
+            return product;
+        }
     }
 }
