@@ -1,0 +1,20 @@
+# Keycloak-backed Identity Strategy
+
+## Status
+Accepted
+
+## Context
+The application must expose secure role-aware endpoints while keeping the security model aligned with modern OAuth2 resource-server practices.
+
+## Decision
+Adopt a Keycloak-backed OAuth2 resource-server model for future identity and authorization verification, while keeping the current test and controller security path aligned with the active Spring Security configuration.
+
+## Consequences
+Benefits:
+- standards-based identity integration
+- role mapping and token-based access control
+- future readiness for enterprise identity expansion
+
+Trade-offs:
+- requires environment alignment for key issuer and JWT validation details
+- current repository state uses the verified in-memory role-based test path until full issuer wiring is completed
