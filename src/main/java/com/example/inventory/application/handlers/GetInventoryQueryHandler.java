@@ -4,9 +4,11 @@ import com.example.inventory.application.dto.InventoryItemResponse;
 import com.example.inventory.application.queries.GetInventoryQuery;
 import com.example.inventory.domain.entities.Product;
 import com.example.inventory.domain.repositories.ProductRepository;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+@Component
 public class GetInventoryQueryHandler {
     private final ProductRepository productRepository;
 

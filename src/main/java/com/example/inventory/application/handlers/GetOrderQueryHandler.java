@@ -4,7 +4,9 @@ import com.example.inventory.application.dto.OrderResponse;
 import com.example.inventory.application.queries.GetOrderQuery;
 import com.example.inventory.domain.entities.Order;
 import com.example.inventory.domain.repositories.OrderRepository;
+import org.springframework.stereotype.Component;
 
+@Component
 public class GetOrderQueryHandler {
     private final OrderRepository orderRepository;
 

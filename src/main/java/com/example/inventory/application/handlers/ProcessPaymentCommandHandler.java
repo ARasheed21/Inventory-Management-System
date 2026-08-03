@@ -4,7 +4,9 @@ import com.example.inventory.application.commands.ProcessPaymentCommand;
 import com.example.inventory.application.dto.OrderResponse;
 import com.example.inventory.domain.entities.Order;
 import com.example.inventory.domain.repositories.OrderRepository;
+import org.springframework.stereotype.Component;
 
+@Component
 public class ProcessPaymentCommandHandler {
     private final OrderRepository orderRepository;
 

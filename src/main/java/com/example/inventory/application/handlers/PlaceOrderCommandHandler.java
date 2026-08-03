@@ -11,11 +11,13 @@ import com.example.inventory.domain.repositories.ProductRepository;
 import com.example.inventory.domain.valueobjects.Address;
 import com.example.inventory.domain.valueobjects.OrderItem;
 import com.example.inventory.domain.valueobjects.SKU;
+import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
+@Component
 public class PlaceOrderCommandHandler {
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
