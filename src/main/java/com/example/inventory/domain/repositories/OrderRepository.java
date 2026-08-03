@@ -1,5 +1,6 @@
 package com.example.inventory.domain.repositories;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -13,6 +14,8 @@ public interface OrderRepository {
     List<Order> findByCustomerId(String customerId);
 
     List<Order> findAll();
+
+    int cancelExpiredPendingOrders(Instant now);
 
     void delete(String id);
 }

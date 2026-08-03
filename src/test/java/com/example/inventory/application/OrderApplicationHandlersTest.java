@@ -24,6 +24,7 @@ import com.example.inventory.domain.valueobjects.OrderStatus;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -134,6 +135,18 @@ class OrderApplicationHandlersTest {
         @Override
         public List<Order> findByCustomerId(String customerId) {
             return savedOrders.stream().filter(order -> order.getCustomerId().equals(customerId)).toList();
+        }
+
+        @Override
+        public int cancelExpiredPendingOrders(Instant now) {
+            int cancelledCount = 0;
+            for (Order order : savedOrders) {
+                if (order.getStatus() == OrderStatus.PENDING && order.isReservationExpired(now)) {
+                    order.cancel();
+                    cancelledCount++;
+                }
+            }
+            return cancelledCount;
         }
 
         @Override

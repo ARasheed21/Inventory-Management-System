@@ -1,7 +1,11 @@
 package com.example.inventory.infrastructure.persistence.jpa;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,6 +17,9 @@ import com.example.inventory.domain.repositories.OrderRepository;
 public class JpaOrderRepository implements OrderRepository {
     private final OrderJpaEntityRepository orderJpaEntityRepository;
     private final OrderJpaMapper orderJpaMapper;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     public JpaOrderRepository(OrderJpaEntityRepository orderJpaEntityRepository) {
         this.orderJpaEntityRepository = orderJpaEntityRepository;
@@ -60,6 +67,19 @@ public class JpaOrderRepository implements OrderRepository {
     @Transactional(readOnly = true)
     public List<Order> findAll() {
         return orderJpaEntityRepository.findAll().stream().map(orderJpaMapper::toDomain).toList();
+    }
+
+    @Override
+    @Transactional
+    public int cancelExpiredPendingOrders(Instant now) {
+        return entityManager.createQuery(
+                "UPDATE OrderJpaEntity o SET o.status = :cancelledStatus, o.updatedAt = :updatedAt "
+                        + "WHERE o.status = :pendingStatus AND o.reservedUntil < :now")
+                .setParameter("cancelledStatus", com.example.inventory.domain.valueobjects.OrderStatus.CANCELLED.name())
+                .setParameter("pendingStatus", com.example.inventory.domain.valueobjects.OrderStatus.PENDING.name())
+                .setParameter("updatedAt", now)
+                .setParameter("now", now)
+                .executeUpdate();
     }
 
     @Override
