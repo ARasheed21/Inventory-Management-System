@@ -33,7 +33,7 @@ import com.example.inventory.web.dto.UpdateProductWebRequest;
 import com.example.inventory.web.mapper.ProductMapper;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping({ "/api", "" })
 @Tag(name = "Inventory", description = "Inventory query and management endpoints")
 public class InventoryController {
 

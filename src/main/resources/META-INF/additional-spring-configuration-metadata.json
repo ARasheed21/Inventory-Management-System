@@ -1,0 +1,24 @@
+{
+    "properties": [
+        {
+            "name": "cors.allowed-origins",
+            "type": "java.lang.String",
+            "description": "Comma-separated list of allowed CORS origins for the frontend."
+        },
+        {
+            "name": "jwt.secret",
+            "type": "java.lang.String",
+            "description": "HS256 secret used to sign JWT access and refresh tokens. Do not use default in production."
+        },
+        {
+            "name": "jwt.access-token-expiration-seconds",
+            "type": "java.lang.Integer",
+            "description": "Access token TTL in seconds."
+        },
+        {
+            "name": "jwt.refresh-token-expiration-seconds",
+            "type": "java.lang.Integer",
+            "description": "Refresh token TTL in seconds."
+        }
+    ]
+}

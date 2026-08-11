@@ -1,6 +1,7 @@
 package com.example.inventory.web.controllers;
 
 import java.util.List;
+import java.util.Map;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -33,7 +34,7 @@ import com.example.inventory.web.dto.CreateOrderRequest;
 import com.example.inventory.web.mapper.OrderMapper;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping({ "/api", "" })
 @Validated
 @Tag(name = "Orders", description = "Order management endpoints")
 public class OrderController {
@@ -87,6 +88,16 @@ public class OrderController {
             @Parameter(description = "Optional status filter") @RequestParam(required = false) String status) {
         List<OrderResponse> responses = listOrdersQueryHandler.handle(new ListOrdersQuery(customerId, status));
         return ResponseEntity.ok(responses.stream().map(orderMapper::toWebResponse).toList());
+    }
+
+    @GetMapping("/orders/status/{orderId}")
+    @Operation(summary = "Get order status", description = "Returns the current status of an order.")
+    @ApiResponse(responseCode = "200", description = "Order status returned")
+    public ResponseEntity<Map<String, String>> getOrderStatus(
+            @Parameter(description = "Unique order identifier") @PathVariable("orderId") String orderId) {
+        com.example.inventory.web.dto.OrderResponse orderResponse = orderMapper.toWebResponse(
+                getOrderQueryHandler.handle(new GetOrderQuery(orderId)));
+        return ResponseEntity.ok(Map.of("orderId", orderId, "status", orderResponse.status()));
     }
 
     @PostMapping("/orders/{id}/payment")
