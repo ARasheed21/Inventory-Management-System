@@ -40,6 +40,15 @@ public class SecurityConfig {
         @org.springframework.beans.factory.annotation.Value("${cors.allowed-origins}")
         private String allowedOrigins;
 
+        @Value("${jwt.use-rs256:false}")
+        private boolean useRs256;
+
+        @Value("${jwt.rsa.public-key-path:classpath:keys/public_key.pem}")
+        private String rsaPublicKeyPath;
+
+        @Value("${jwt.rsa.private-key-path:classpath:keys/private_key.pem}")
+        private String rsaPrivateKeyPath;
+
         public SecurityConfig(UserRegistry userRegistry, JwtAuthenticationConverter jwtAuthenticationConverter) {
                 this.userRegistry = userRegistry;
                 this.jwtAuthenticationConverter = jwtAuthenticationConverter;
@@ -84,19 +93,39 @@ public class SecurityConfig {
         }
 
         @Bean
-        public JwtEncoder jwtEncoder(@Value("${jwt.secret}") String jwtSecret) {
-                byte[] secretBytes = jwtSecret.getBytes();
-                OctetSequenceKey octetKey = new OctetSequenceKey.Builder(secretBytes).build();
-                JWKSet jwkSet = new JWKSet(octetKey);
-                JWKSource<SecurityContext> jwkSource = new ImmutableJWKSet<>(jwkSet);
-                return new NimbusJwtEncoder(jwkSource);
+        public JwtEncoder jwtEncoder(@Value("${jwt.secret:change-me-please}") String jwtSecret) throws Exception {
+                if (useRs256) {
+                        var privateKey = PemKeyUtils.loadPrivateKey(rsaPrivateKeyPath);
+                        var publicKey = PemKeyUtils.loadPublicKey(rsaPublicKeyPath);
+                        var rsaKey = new com.nimbusds.jose.jwk.RSAKey.Builder(
+                                        (java.security.interfaces.RSAPublicKey) publicKey)
+                                        .privateKey((java.security.interfaces.RSAPrivateKey) privateKey)
+                                        .keyID("rs256-key-1")
+                                        .build();
+                        JWKSet jwkSet = new JWKSet(rsaKey);
+                        JWKSource<SecurityContext> jwkSource = new ImmutableJWKSet<>(jwkSet);
+                        return new NimbusJwtEncoder(jwkSource);
+                } else {
+                        byte[] secretBytes = jwtSecret.getBytes();
+                        OctetSequenceKey octetKey = new OctetSequenceKey.Builder(secretBytes).build();
+                        JWKSet jwkSet = new JWKSet(octetKey);
+                        JWKSource<SecurityContext> jwkSource = new ImmutableJWKSet<>(jwkSet);
+                        return new NimbusJwtEncoder(jwkSource);
+                }
         }
 
         @Bean
-        public JwtDecoder jwtDecoder(@Value("${jwt.secret}") String jwtSecret) {
-                SecretKey secretKey = new SecretKeySpec(jwtSecret.getBytes(), "HmacSHA256");
-                return NimbusJwtDecoder.withSecretKey(secretKey)
-                                .macAlgorithm(org.springframework.security.oauth2.jose.jws.MacAlgorithm.HS256).build();
+        public JwtDecoder jwtDecoder(@Value("${jwt.secret:change-me-please}") String jwtSecret) throws Exception {
+                if (useRs256) {
+                        var publicKey = PemKeyUtils.loadPublicKey(rsaPublicKeyPath);
+                        return NimbusJwtDecoder.withPublicKey((java.security.interfaces.RSAPublicKey) publicKey)
+                                        .build();
+                } else {
+                        SecretKey secretKey = new SecretKeySpec(jwtSecret.getBytes(), "HmacSHA256");
+                        return NimbusJwtDecoder.withSecretKey(secretKey)
+                                        .macAlgorithm(org.springframework.security.oauth2.jose.jws.MacAlgorithm.HS256)
+                                        .build();
+                }
         }
 
         @Bean

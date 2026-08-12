@@ -45,19 +45,22 @@ public class OrderController {
     private final ProcessPaymentCommandHandler processPaymentCommandHandler;
     private final CancelOrderCommandHandler cancelOrderCommandHandler;
     private final OrderMapper orderMapper;
+    private final com.example.inventory.infrastructure.websocket.OrderWebSocketService orderWebSocketService;
 
     public OrderController(PlaceOrderCommandHandler placeOrderCommandHandler,
             GetOrderQueryHandler getOrderQueryHandler,
             ListOrdersQueryHandler listOrdersQueryHandler,
             ProcessPaymentCommandHandler processPaymentCommandHandler,
             CancelOrderCommandHandler cancelOrderCommandHandler,
-            OrderMapper orderMapper) {
+            OrderMapper orderMapper,
+            com.example.inventory.infrastructure.websocket.OrderWebSocketService orderWebSocketService) {
         this.placeOrderCommandHandler = placeOrderCommandHandler;
         this.getOrderQueryHandler = getOrderQueryHandler;
         this.listOrdersQueryHandler = listOrdersQueryHandler;
         this.processPaymentCommandHandler = processPaymentCommandHandler;
         this.cancelOrderCommandHandler = cancelOrderCommandHandler;
         this.orderMapper = orderMapper;
+        this.orderWebSocketService = orderWebSocketService;
     }
 
     @PostMapping("/orders")
@@ -116,5 +119,17 @@ public class OrderController {
             @Parameter(description = "Unique order identifier") @PathVariable("id") String id) {
         OrderResponse orderResponse = cancelOrderCommandHandler.handle(new CancelOrderCommand(id));
         return ResponseEntity.ok(orderMapper.toWebResponse(orderResponse));
+    }
+
+    @PostMapping("/orders/{id}/notify-test")
+    public ResponseEntity<Void> notifyTest(@PathVariable("id") String id) {
+        orderWebSocketService.publishOrderUpdate(id, Map.of("orderId", id, "status", "TEST_UPDATE"));
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/orders/{id}/notify-user/{username}")
+    public ResponseEntity<Void> notifyUser(@PathVariable("id") String id, @PathVariable("username") String username) {
+        orderWebSocketService.publishToUser(username, Map.of("orderId", id, "status", "USER_UPDATE"));
+        return ResponseEntity.ok().build();
     }
 }

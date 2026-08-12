@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.stereotype.Component;
 
@@ -16,7 +17,7 @@ public class UserRegistry {
     private final Map<String, RegisteredUser> registeredUsers;
     private final UserDetailsService userDetailsService;
 
-    public UserRegistry() {
+    public UserRegistry(PasswordEncoder passwordEncoder) {
         this.registeredUsers = Map.of(
                 "admin", new RegisteredUser("admin-1", "admin", "admin@example.com", "admin", List.of("ADMIN")),
                 "warehouse",
@@ -27,7 +28,7 @@ public class UserRegistry {
         this.userDetailsService = new InMemoryUserDetailsManager(
                 registeredUsers.values().stream()
                         .map(user -> User.withUsername(user.username())
-                                .password(user.password())
+                                .password(passwordEncoder.encode(user.password()))
                                 .roles(user.roles().toArray(String[]::new))
                                 .build())
                         .collect(Collectors.toList()));

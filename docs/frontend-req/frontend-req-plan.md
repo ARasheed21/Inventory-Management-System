@@ -42,47 +42,41 @@ The backend does not yet satisfy several frontend contract expectations:
 
 #### Phase 1: Backend readiness before frontend work
 
-1. Confirm backend contract and version of API base path
-   - Decide if frontend should use `/api` prefix explicitly
-   - Standardize URLs and document them as `API_BASE_URL` and `WS_BASE_URL`
+1. Confirm backend contract and version of API base path (completed)
+   - Frontend should use `/api` prefix where controllers expose it. API base: `API_BASE_URL=/api`. WS base: `WS_BASE_URL=/ws`.
+   - Example env file: `.env.example` at the project root (contains `API_BASE_URL` and `WS_BASE_URL`).
 
-2. Implement required auth support
-   - Add `POST /auth/login` returning JWT + refresh token
-   - Add `POST /auth/refresh`
-   - Add `GET /auth/me`
-   - Switch security to JWT bearer tokens
-   - Ensure token payload includes `userId`, `email`, `roles`
-   - Prefer RS256 if possible; otherwise HS256
-   - Provide public key PEM if using RS256
+2. Implement required auth support (completed)
+   - Endpoints added: `POST /auth/login`, `POST /auth/refresh`, `GET /auth/me` (`src/main/java/com/example/inventory/web/controllers/AuthController.java`).
+   - Security switched to JWT bearer tokens; `JwtService` includes `userId`, `email`, and `roles` in tokens (`src/main/java/com/example/inventory/infrastructure/security/JwtService.java`).
+   - Current implementation uses HS256 (shared secret). RS256 is recommended for production; see notes below if you want RS256 support.
 
-3. Add missing cart endpoints
-   - Support cart CRUD operations
-   - Keep request/response payloads consistent and documented
+3. Add missing cart endpoints (completed)
+   - Cart CRUD implemented under `/api/cart` (`CartController`, `CartHandler`, `JpaCartRepository`).
 
-4. Add real-time order status support
-   - Add `/orders/status/{orderId}` or WebSocket STOMP `/ws/orders`
-   - If using STOMP:
-     - support `CONNECT` with JWT header
-     - `/user/queue/orders` for customer
-     - `/topic/orders` for admin
-     - JSON payload with `orderId` and `status`
+4. Add real-time order status support (completed)
+   - `GET /orders/status/{orderId}` exists (`OrderController`).
+   - STOMP/WebSocket `/ws` endpoint added with JWT handshake support and a simple in-memory broker. Test publish endpoint: `POST /api/orders/{id}/notify-test`.
+   - STOMP JWT support accepts `Authorization` header, `sec-websocket-protocol` subprotocol, or handshake attribute; see `StompJwtChannelInterceptor` and `WebSocketHandshakeInterceptor`.
 
-5. Add CORS configuration
-   - Allow web dashboard origin
-   - Allow credentials and methods GET, POST, PUT, DELETE, OPTIONS
+5. Add CORS configuration (completed)
+   - CORS configured in `SecurityConfig` via `cors.allowed-origins` property; see `application.yml` and `SecurityConfig`.
 
-6. Add standard error response schema
-   - Consistent JSON format for errors
-   - Example: `{ "timestamp": "...", "status": 401, "message": "...", "path": "/cart" }`
+6. Add standard error response schema (completed)
+   - Centralized `ApiExceptionHandler` returns consistent JSON error payloads for validation and other errors.
 
-7. Publish API spec
-   - Ensure OpenAPI/Swagger spec is available and up to date
-   - Optionally provide Postman collection
+7. Publish API spec (available)
+   - OpenAPI/Swagger available at `/v3/api-docs` and `/swagger-ui.html` via Springdoc. Ensure controllers' DTOs and request/response models are documented.
 
-8. Prepare deployment secrets and certs
-   - Generate/publish SSL public key hashes
-   - Create environment secrets for `API_BASE_URL`, `WS_BASE_URL`
-   - Register hosting and distribution services if not already done
+8. Prepare deployment secrets and certs (partially completed)
+   - `.env.example` added at repo root for environment values.
+   - Certificate pinning helper: `docs/frontend-req/cert-pinning.md` (commands to extract public key SHA256).
+   - Hosting and distribution registration remain operational tasks for your ops team.
+
+Notes and remaining recommendations:
+- RS256: Consider adding RS256 support and publishing the public key PEM for frontend verification; current implementation uses HS256.
+- Broker: In-memory STOMP broker is for development; use RabbitMQ/Redis STOMP relay in production for scalability.
+- API base path: Most controllers use `/api` prefix (check any custom endpoints). Consider enforcing a global prefix via `spring.mvc.servlet.path` or a common `@RequestMapping` base if you want strict uniformity.
 
 #### Phase 2: Frontend skeleton and environment
 
