@@ -15,7 +15,8 @@ public class ProductMapper {
                 request.description(),
                 request.price(),
                 request.currency(),
-                request.quantityInStock()));
+                request.quantityInStock(),
+                request.category()));
     }
 
     public UpdateProductCommand toUpdateCommand(String id,
@@ -26,7 +27,8 @@ public class ProductMapper {
                         request.description(),
                         request.price(),
                         request.currency(),
-                        request.quantityInStock()));
+                        request.quantityInStock(),
+                        request.category()));
     }
 
     public com.example.inventory.web.dto.ProductResponse toWebResponse(ProductResponse response) {
@@ -36,6 +38,7 @@ public class ProductMapper {
                 response.description(),
                 response.price(),
                 response.currency(),
-                response.quantityInStock());
+                response.quantityInStock(),
+                response.category());
     }
 }

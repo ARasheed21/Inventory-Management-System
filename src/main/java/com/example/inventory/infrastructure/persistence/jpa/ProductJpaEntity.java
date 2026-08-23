@@ -40,11 +40,19 @@ public class ProductJpaEntity {
     @Column(name = "version", nullable = false)
     private Long version;
 
+    @Column(name = "category")
+    private String category;
+
     protected ProductJpaEntity() {
     }
 
     public ProductJpaEntity(String externalId, String name, String description, BigDecimal price, String currency,
             Integer quantityInStock, Long version) {
+        this(externalId, name, description, price, currency, quantityInStock, version, null);
+    }
+
+    public ProductJpaEntity(String externalId, String name, String description, BigDecimal price, String currency,
+            Integer quantityInStock, Long version, String category) {
         this.externalId = externalId;
         this.name = name;
         this.description = description;
@@ -52,6 +60,7 @@ public class ProductJpaEntity {
         this.currency = currency;
         this.quantityInStock = quantityInStock;
         this.version = version;
+        this.category = category;
     }
 
     public Long getId() {
@@ -112,5 +121,13 @@ public class ProductJpaEntity {
 
     public void setVersion(Long version) {
         this.version = version;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
     }
 }

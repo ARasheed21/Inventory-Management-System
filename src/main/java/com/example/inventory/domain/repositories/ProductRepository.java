@@ -10,5 +10,10 @@ public interface ProductRepository {
 
     List<Product> findAll();
 
+    SearchResult search(String searchTerm, String category, int page, int size);
+
     Product save(Product product);
+
+    record SearchResult(List<Product> products, long total, int page, int size) {
+    }
 }

@@ -9,8 +9,14 @@ public class Product {
     private final Money price;
     private final int quantityInStock;
     private final long version;
+    private final String category;
 
     public Product(String id, String name, String description, Money price, int quantityInStock, long version) {
+        this(id, name, description, price, quantityInStock, version, null);
+    }
+
+    public Product(String id, String name, String description, Money price, int quantityInStock, long version,
+            String category) {
         if (id == null || id.isBlank()) {
             throw new IllegalArgumentException("Product id is required");
         }
@@ -29,6 +35,7 @@ public class Product {
         this.price = price;
         this.quantityInStock = quantityInStock;
         this.version = version;
+        this.category = category;
     }
 
     public String getId() {
@@ -53,5 +60,9 @@ public class Product {
 
     public long getVersion() {
         return version;
+    }
+
+    public String getCategory() {
+        return category;
     }
 }

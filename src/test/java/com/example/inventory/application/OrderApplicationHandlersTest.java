@@ -170,6 +170,11 @@ class OrderApplicationHandlersTest {
         }
 
         @Override
+        public SearchResult search(String searchTerm, String category, int page, int size) {
+            return new SearchResult(List.copyOf(products), products.size(), page, size);
+        }
+
+        @Override
         public Product save(Product product) {
             products.removeIf(existing -> existing.getId().equals(product.getId()));
             products.add(product);

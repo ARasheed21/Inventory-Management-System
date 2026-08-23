@@ -24,10 +24,11 @@ public class CreateProductCommandHandler {
         validateRequest(request);
         String id = UUID.randomUUID().toString();
         Product product = new Product(id, request.name(), request.description(),
-                Money.of(request.price(), request.currency()), request.quantityInStock(), 0L);
+                Money.of(request.price(), request.currency()), request.quantityInStock(), 0L, request.category());
         Product saved = productRepository.save(product);
         return new ProductResponse(saved.getId(), saved.getName(), saved.getDescription(),
-                saved.getPrice().amount().toPlainString(), saved.getPrice().currency(), saved.getQuantityInStock());
+                saved.getPrice().amount().toPlainString(), saved.getPrice().currency(), saved.getQuantityInStock(),
+                saved.getCategory());
     }
 
     private void validateRequest(CreateProductRequest request) {

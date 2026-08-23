@@ -1,30 +1,26 @@
 package com.example.inventory.application.handlers;
 
-import java.util.List;
-
 import org.springframework.stereotype.Component;
 
-import com.example.inventory.application.dto.ProductPage;
 import com.example.inventory.application.dto.ProductResponse;
-import com.example.inventory.application.queries.ListProductsQuery;
+import com.example.inventory.application.queries.GetProductQuery;
 import com.example.inventory.domain.repositories.ProductRepository;
+import com.example.inventory.application.ResourceNotFoundException;
 
 @Component
-public class ListProductsQueryHandler {
+public class GetProductQueryHandler {
+
     private final ProductRepository productRepository;
 
-    public ListProductsQueryHandler(ProductRepository productRepository) {
+    public GetProductQueryHandler(ProductRepository productRepository) {
         this.productRepository = productRepository;
     }
 
-    public ProductPage handle(ListProductsQuery query) {
-        ProductRepository.SearchResult result = productRepository.search(query.searchTerm(), query.category(),
-                query.page(), query.size());
-        List<ProductResponse> content = result.products().stream()
+    public ProductResponse handle(GetProductQuery query) {
+        return productRepository.findById(query.productId())
                 .map(product -> new ProductResponse(product.getId(), product.getName(), product.getDescription(),
                         product.getPrice().amount().toPlainString(), product.getPrice().currency(),
                         product.getQuantityInStock(), product.getCategory()))
-                .toList();
-        return new ProductPage(content, result.total(), result.page(), result.size());
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found: " + query.productId()));
     }
 }

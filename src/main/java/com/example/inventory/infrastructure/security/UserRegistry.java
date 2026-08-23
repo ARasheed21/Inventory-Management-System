@@ -11,7 +11,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.stereotype.Component;
 
-@Component
+@Component("securityUserRegistry")
 public class UserRegistry {
 
     private final Map<String, RegisteredUser> registeredUsers;

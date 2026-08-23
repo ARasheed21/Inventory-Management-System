@@ -19,7 +19,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.inventory.infrastructure.security.JwtService;
 import com.example.inventory.infrastructure.security.UserRegistry;
-import com.example.inventory.web.dto.AuthResponse;
 import com.example.inventory.web.dto.LoginRequest;
 import com.example.inventory.web.dto.RefreshRequest;
 
@@ -39,32 +38,34 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.username(), request.password()));
             SecurityContextHolder.getContext().setAuthentication(authentication);
-            return userRegistry.findByUsername(request.username())
-                    .map(jwtService::generateTokens)
-                    .map(ResponseEntity::ok)
-                    .orElseGet(() -> ResponseEntity.badRequest().build());
+            var user = userRegistry.findByUsername(request.username());
+            if (user.isEmpty()) {
+                return unauthorized("/auth/login", "Unknown user");
+            }
+            return ResponseEntity.ok(jwtService.generateTokens(user.get()));
         } catch (AuthenticationException ex) {
-            return ResponseEntity.status(401).build();
+            return unauthorized("/auth/login", "Invalid username or password");
         }
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshRequest request) {
+    public ResponseEntity<?> refresh(@Valid @RequestBody RefreshRequest request) {
         try {
             String token = request.refreshToken();
             var jwt = jwtService.decodeToken(token);
             String username = jwt.getSubject();
-            return userRegistry.findByUsername(username)
-                    .map(user -> jwtService.refreshTokens(token, user))
-                    .map(ResponseEntity::ok)
-                    .orElseGet(() -> ResponseEntity.badRequest().build());
+            var user = userRegistry.findByUsername(username);
+            if (user.isEmpty()) {
+                return unauthorized("/auth/refresh", "Invalid refresh token");
+            }
+            return ResponseEntity.ok(jwtService.refreshTokens(token, user.get()));
         } catch (Exception ex) {
-            return ResponseEntity.status(401).build();
+            return unauthorized("/auth/refresh", "Invalid refresh token");
         }
     }
 
@@ -79,7 +80,14 @@ public class AuthController {
                         "userId", user.id(),
                         "username", user.username(),
                         "email", user.email(),
-                        "roles", user.roles())))
+                        "roles", user.roles().stream()
+                                .map(role -> role.startsWith("ROLE_") ? role : "ROLE_" + role)
+                                .toList())))
                 .orElseGet(() -> ResponseEntity.status(401).build());
+    }
+
+    private ResponseEntity<Map<String, Object>> unauthorized(String path, String message) {
+        return ResponseEntity.status(401)
+                .body(com.example.inventory.web.api.ApiErrorBody.of(401, "Unauthorized", message, path));
     }
 }

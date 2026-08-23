@@ -24,10 +24,12 @@ public class UpdateProductCommandHandler {
                 .orElseThrow(() -> new IllegalArgumentException("Product not found: " + command.productId()));
 
         Product updated = new Product(existing.getId(), request.name(), request.description(),
-                Money.of(request.price(), request.currency()), request.quantityInStock(), existing.getVersion());
+                Money.of(request.price(), request.currency()), request.quantityInStock(), existing.getVersion(),
+                request.category() != null ? request.category() : existing.getCategory());
         Product saved = productRepository.save(updated);
         return new ProductResponse(saved.getId(), saved.getName(), saved.getDescription(),
-                saved.getPrice().amount().toPlainString(), saved.getPrice().currency(), saved.getQuantityInStock());
+                saved.getPrice().amount().toPlainString(), saved.getPrice().currency(), saved.getQuantityInStock(),
+                saved.getCategory());
     }
 
     private void validateRequest(UpdateProductRequest request) {

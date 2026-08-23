@@ -11,5 +11,6 @@ public record UpdateProductWebRequest(
                 @Schema(description = "Product description", example = "Compact desk lamp") String description,
                 @Schema(description = "Product price", example = "45.00") @NotBlank(message = "price is required") String price,
                 @Schema(description = "Currency code", example = "USD") @NotBlank(message = "currency is required") String currency,
-                @Schema(description = "Inventory quantity on hand", example = "25") @NotNull(message = "quantityInStock is required") @Min(value = 0, message = "quantityInStock must be non-negative") int quantityInStock) {
+                @Schema(description = "Inventory quantity on hand", example = "25") @NotNull(message = "quantityInStock is required") @Min(value = 0, message = "quantityInStock must be non-negative") int quantityInStock,
+                @Schema(description = "Product category", example = "lighting") String category) {
 }

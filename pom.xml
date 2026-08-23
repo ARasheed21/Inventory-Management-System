@@ -20,7 +20,7 @@
     <properties>
         <java.version>21</java.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
-        <springdoc.version>2.5.0</springdoc.version>
+        <springdoc.version>2.8.13</springdoc.version>
         <jacoco.version>0.8.12</jacoco.version>
         <formatter.version>2.24.0</formatter.version>
     </properties>

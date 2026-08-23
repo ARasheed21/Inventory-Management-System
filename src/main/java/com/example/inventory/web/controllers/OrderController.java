@@ -10,6 +10,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -68,8 +70,12 @@ public class OrderController {
     @ApiResponse(responseCode = "201", description = "Order created")
     @ApiResponse(responseCode = "400", description = "Invalid request body")
     public ResponseEntity<com.example.inventory.web.dto.OrderResponse> createOrder(
-            @Valid @RequestBody CreateOrderRequest request) {
-        PlaceOrderCommand command = orderMapper.toPlaceOrderCommand(request);
+            @Valid @RequestBody CreateOrderRequest request, Authentication authentication) {
+        CreateOrderRequest effectiveRequest = request;
+        if (authentication != null && !isAdmin(authentication)) {
+            effectiveRequest = new CreateOrderRequest(authentication.getName(), request.items());
+        }
+        PlaceOrderCommand command = orderMapper.toPlaceOrderCommand(effectiveRequest);
         OrderResponse orderResponse = placeOrderCommandHandler.handle(command);
         return ResponseEntity.status(HttpStatus.CREATED).body(orderMapper.toWebResponse(orderResponse));
     }
@@ -78,18 +84,26 @@ public class OrderController {
     @Operation(summary = "Get one order", description = "Fetches an order by its identifier.")
     @ApiResponse(responseCode = "200", description = "Order found")
     public ResponseEntity<com.example.inventory.web.dto.OrderResponse> getOrder(
-            @Parameter(description = "Unique order identifier") @PathVariable("id") String id) {
+            @Parameter(description = "Unique order identifier") @PathVariable("id") String id,
+            Authentication authentication) {
         OrderResponse orderResponse = getOrderQueryHandler.handle(new GetOrderQuery(id));
+        assertOwnership(orderMapper.toWebResponse(orderResponse), authentication);
         return ResponseEntity.ok(orderMapper.toWebResponse(orderResponse));
     }
 
     @GetMapping("/orders")
-    @Operation(summary = "List orders", description = "Lists orders for a customer, optionally filtered by status.")
+    @Operation(summary = "List orders", description = "Lists orders for a customer, optionally filtered by status. Non-admin callers are always scoped to their own orders.")
     @ApiResponse(responseCode = "200", description = "Orders listed")
     public ResponseEntity<List<com.example.inventory.web.dto.OrderResponse>> listOrders(
-            @Parameter(description = "Optional customer identifier") @RequestParam(required = false) String customerId,
-            @Parameter(description = "Optional status filter") @RequestParam(required = false) String status) {
-        List<OrderResponse> responses = listOrdersQueryHandler.handle(new ListOrdersQuery(customerId, status));
+            @Parameter(description = "Optional customer identifier (admin only)") @RequestParam(required = false) String customerId,
+            @Parameter(description = "Optional status filter") @RequestParam(required = false) String status,
+            Authentication authentication) {
+        String effectiveCustomerId = customerId;
+        if (!isAdmin(authentication)) {
+            effectiveCustomerId = authentication != null ? authentication.getName() : null;
+        }
+        List<OrderResponse> responses = listOrdersQueryHandler
+                .handle(new ListOrdersQuery(effectiveCustomerId, status));
         return ResponseEntity.ok(responses.stream().map(orderMapper::toWebResponse).toList());
     }
 
@@ -97,9 +111,11 @@ public class OrderController {
     @Operation(summary = "Get order status", description = "Returns the current status of an order.")
     @ApiResponse(responseCode = "200", description = "Order status returned")
     public ResponseEntity<Map<String, String>> getOrderStatus(
-            @Parameter(description = "Unique order identifier") @PathVariable("orderId") String orderId) {
+            @Parameter(description = "Unique order identifier") @PathVariable("orderId") String orderId,
+            Authentication authentication) {
         com.example.inventory.web.dto.OrderResponse orderResponse = orderMapper.toWebResponse(
                 getOrderQueryHandler.handle(new GetOrderQuery(orderId)));
+        assertOwnership(orderResponse, authentication);
         return ResponseEntity.ok(Map.of("orderId", orderId, "status", orderResponse.status()));
     }
 
@@ -107,8 +123,10 @@ public class OrderController {
     @Operation(summary = "Process payment for an order", description = "Transitions a pending order to a paid state.")
     @ApiResponse(responseCode = "200", description = "Payment processed")
     public ResponseEntity<com.example.inventory.web.dto.OrderResponse> processPayment(
-            @Parameter(description = "Unique order identifier") @PathVariable("id") String id) {
+            @Parameter(description = "Unique order identifier") @PathVariable("id") String id,
+            Authentication authentication) {
         OrderResponse orderResponse = processPaymentCommandHandler.handle(new ProcessPaymentCommand(id));
+        assertOwnership(orderMapper.toWebResponse(orderResponse), authentication);
         return ResponseEntity.ok(orderMapper.toWebResponse(orderResponse));
     }
 
@@ -116,20 +134,40 @@ public class OrderController {
     @Operation(summary = "Cancel an order", description = "Cancels an order when allowed by the domain lifecycle.")
     @ApiResponse(responseCode = "200", description = "Order cancelled")
     public ResponseEntity<com.example.inventory.web.dto.OrderResponse> cancelOrder(
-            @Parameter(description = "Unique order identifier") @PathVariable("id") String id) {
+            @Parameter(description = "Unique order identifier") @PathVariable("id") String id,
+            Authentication authentication) {
         OrderResponse orderResponse = cancelOrderCommandHandler.handle(new CancelOrderCommand(id));
+        assertOwnership(orderMapper.toWebResponse(orderResponse), authentication);
         return ResponseEntity.ok(orderMapper.toWebResponse(orderResponse));
     }
 
     @PostMapping("/orders/{id}/notify-test")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> notifyTest(@PathVariable("id") String id) {
         orderWebSocketService.publishOrderUpdate(id, Map.of("orderId", id, "status", "TEST_UPDATE"));
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/orders/{id}/notify-user/{username}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> notifyUser(@PathVariable("id") String id, @PathVariable("username") String username) {
         orderWebSocketService.publishToUser(username, Map.of("orderId", id, "status", "USER_UPDATE"));
         return ResponseEntity.ok().build();
+    }
+
+    private boolean isAdmin(Authentication authentication) {
+        return authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
+    }
+
+    private void assertOwnership(com.example.inventory.web.dto.OrderResponse response, Authentication authentication) {
+        if (isAdmin(authentication)) {
+            return;
+        }
+        String principalName = authentication != null ? authentication.getName() : null;
+        if (principalName == null || !response.customerId().equals(principalName)) {
+            throw new com.example.inventory.application.ResourceNotFoundException(
+                    "Order not found: " + response.id());
+        }
     }
 }
