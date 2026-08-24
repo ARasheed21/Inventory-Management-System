@@ -1,5 +1,9 @@
 package com.example.inventory.web.controllers;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
 import java.security.Principal;
@@ -20,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.inventory.infrastructure.security.JwtService;
 import com.example.inventory.infrastructure.security.LoginRateLimiter;
 import com.example.inventory.infrastructure.security.UserRegistry;
+import com.example.inventory.web.dto.AuthResponse;
 import com.example.inventory.web.dto.LoginRequest;
 import com.example.inventory.web.dto.RefreshRequest;
 import com.example.inventory.web.dto.RegisterRequest;
@@ -29,6 +34,7 @@ import org.springframework.http.HttpStatus;
 
 @RestController
 @RequestMapping("/auth")
+@Tag(name = "Authentication", description = "Registration, login, token refresh, and current-user endpoints")
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
@@ -47,6 +53,18 @@ public class AuthController {
     }
 
     @PostMapping("/register")
+    @Operation(summary = "Register a new customer account",
+            description = "Creates an account with ROLE_CUSTOMER and returns tokens immediately. "
+                    + "Passwords must be at least 8 characters and contain a letter and a digit.")
+    @ApiResponse(responseCode = "201", description = "Account created; returns username plus access/refresh tokens",
+            content = @io.swagger.v3.oas.annotations.media.Content(
+                    mediaType = "application/json",
+                    schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = com.example.inventory.web.dto.RegisterResponse.class)))
+    @ApiResponse(responseCode = "400", description = "Validation failed (blank fields, bad email, weak password)",
+            content = @io.swagger.v3.oas.annotations.media.Content(
+                    mediaType = "application/json",
+                    schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = com.example.inventory.web.dto.ApiError.class)))
+    @ApiResponse(responseCode = "409", description = "Username or email already registered")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
         if (userRegistry.existsByUsernameOrEmail(request.username(), request.email())) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
@@ -57,14 +75,20 @@ public class AuthController {
                 request.username(), request.email(), request.password(), passwordEncoder);
         var tokens = jwtService.generateTokens(user);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(Map.of(
-                        "username", user.username(),
-                        "accessToken", tokens.accessToken(),
-                        "refreshToken", tokens.refreshToken(),
-                        "expiresIn", tokens.expiresIn()));
+                .body(new com.example.inventory.web.dto.RegisterResponse(
+                        user.username(),
+                        tokens.accessToken(),
+                        tokens.refreshToken(),
+                        tokens.expiresIn()));
     }
 
     @PostMapping("/login")
+    @Operation(summary = "Login with username and password",
+            description = "Returns JWT access + refresh tokens. Rate limited per username: after "
+                    + "security.login.max-attempts failures within the window, requests return 429 until it expires.")
+    @ApiResponse(responseCode = "200", description = "Authenticated; returns AuthResponse")
+    @ApiResponse(responseCode = "401", description = "Invalid username or password")
+    @ApiResponse(responseCode = "429", description = "Too many failed attempts; account temporarily locked")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
         if (loginRateLimiter.isLocked(request.username())) {
             return tooManyAttempts();
@@ -94,6 +118,10 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
+    @Operation(summary = "Exchange a refresh token for a new token pair",
+            description = "Validates the refresh JWT and issues a new access/refresh token pair for its subject.")
+    @ApiResponse(responseCode = "200", description = "New tokens issued")
+    @ApiResponse(responseCode = "401", description = "Invalid or expired refresh token")
     public ResponseEntity<?> refresh(@Valid @RequestBody RefreshRequest request) {
         try {
             String token = request.refreshToken();
@@ -110,7 +138,12 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<Map<String, Object>> me(Principal principal) {
+    @Operation(summary = "Get the current user's profile",
+            description = "Resolves the authenticated principal and returns id, username, email, and ROLE_-prefixed roles.")
+    @ApiResponse(responseCode = "200", description = "Profile of the authenticated user")
+    @ApiResponse(responseCode = "401", description = "No valid bearer token")
+    public ResponseEntity<Map<String, Object>> me(
+            @Parameter(hidden = true) Principal principal) {
         if (principal == null) {
             return ResponseEntity.status(401).build();
         }

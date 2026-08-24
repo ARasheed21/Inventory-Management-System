@@ -1,0 +1,1553 @@
+openapi: 3.1.0
+info:
+  title: Inventory Management System API
+  description: |-
+    Backend contract for the Inventory Management System frontend clients.
+
+    Authentication: obtain a JWT via POST /auth/login or POST /auth/register,
+    then send `Authorization: Bearer <accessToken>` on every protected call.
+    Refresh tokens are exchanged at POST /auth/refresh.
+
+    Real-time updates are delivered over STOMP over WebSocket at /api/ws
+    (see docs/api-contract/asyncapi-ws.md) - they are not part of this
+    OpenAPI document.
+  version: 0.1.0
+servers:
+- url: http://localhost
+  description: Generated server url
+security:
+- bearerAuth: []
+tags:
+- name: Cart
+  description: Shopping-cart endpoints scoped to the authenticated customer
+- name: Inventory
+  description: Inventory query and management endpoints
+- name: Orders
+  description: Order management endpoints
+- name: Authentication
+  description: "Registration, login, token refresh, and current-user endpoints"
+- name: Audit
+  description: Admin audit-history endpoints
+paths:
+  /api/inventory/products/{id}:
+    put:
+      tags:
+      - Inventory
+      summary: Update product entry
+      description: Updates product details and quantity.
+      operationId: updateProduct
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProductRequest"
+        required: true
+      responses:
+        "200":
+          description: Product updated
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+  /inventory/products/{id}:
+    put:
+      tags:
+      - Inventory
+      summary: Update product entry
+      description: Updates product details and quantity.
+      operationId: updateProduct_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProductRequest"
+        required: true
+      responses:
+        "200":
+          description: Product updated
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+  /cart/{itemId}:
+    put:
+      tags:
+      - Cart
+      summary: Update a cart item
+      description: Updates quantity (and optionally product) of one of the authenticated
+        user's cart items.
+      operationId: updateCartItem
+      parameters:
+      - name: itemId
+        in: path
+        description: Cart item identifier
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCartItemRequest"
+        required: true
+      responses:
+        "200":
+          description: Cart item updated
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CartResponse"
+        "400":
+          description: Validation failed or quantity < 1
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CartResponse"
+        "404":
+          description: Cart item not found for this user
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CartResponse"
+    delete:
+      tags:
+      - Cart
+      summary: Remove a cart item
+      description: Deletes one of the authenticated user's cart items.
+      operationId: deleteCartItem
+      parameters:
+      - name: itemId
+        in: path
+        description: Cart item identifier
+        required: true
+        schema:
+          type: string
+      responses:
+        "204":
+          description: Cart item removed
+        "404":
+          description: Cart item not found for this user
+  /api/cart/{itemId}:
+    put:
+      tags:
+      - Cart
+      summary: Update a cart item
+      description: Updates quantity (and optionally product) of one of the authenticated
+        user's cart items.
+      operationId: updateCartItem_1
+      parameters:
+      - name: itemId
+        in: path
+        description: Cart item identifier
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCartItemRequest"
+        required: true
+      responses:
+        "200":
+          description: Cart item updated
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CartResponse"
+        "400":
+          description: Validation failed or quantity < 1
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CartResponse"
+        "404":
+          description: Cart item not found for this user
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CartResponse"
+    delete:
+      tags:
+      - Cart
+      summary: Remove a cart item
+      description: Deletes one of the authenticated user's cart items.
+      operationId: deleteCartItem_1
+      parameters:
+      - name: itemId
+        in: path
+        description: Cart item identifier
+        required: true
+        schema:
+          type: string
+      responses:
+        "204":
+          description: Cart item removed
+        "404":
+          description: Cart item not found for this user
+  /auth/register:
+    post:
+      tags:
+      - Authentication
+      summary: Register a new customer account
+      description: Creates an account with ROLE_CUSTOMER and returns tokens immediately.
+        Passwords must be at least 8 characters and contain a letter and a digit.
+      operationId: register
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+        required: true
+      responses:
+        "201":
+          description: Account created; returns username plus access/refresh tokens
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegisterResponse"
+        "400":
+          description: "Validation failed (blank fields, bad email, weak password)"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: Username or email already registered
+          content:
+            '*/*':
+              schema:
+                type: object
+  /auth/refresh:
+    post:
+      tags:
+      - Authentication
+      summary: Exchange a refresh token for a new token pair
+      description: Validates the refresh JWT and issues a new access/refresh token
+        pair for its subject.
+      operationId: refresh
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshRequest"
+        required: true
+      responses:
+        "200":
+          description: New tokens issued
+          content:
+            '*/*':
+              schema:
+                type: object
+        "401":
+          description: Invalid or expired refresh token
+          content:
+            '*/*':
+              schema:
+                type: object
+  /auth/login:
+    post:
+      tags:
+      - Authentication
+      summary: Login with username and password
+      description: "Returns JWT access + refresh tokens. Rate limited per username:\
+        \ after security.login.max-attempts failures within the window, requests return\
+        \ 429 until it expires."
+      operationId: login
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+        required: true
+      responses:
+        "200":
+          description: Authenticated; returns AuthResponse
+          content:
+            '*/*':
+              schema:
+                type: object
+        "401":
+          description: Invalid username or password
+          content:
+            '*/*':
+              schema:
+                type: object
+        "429":
+          description: Too many failed attempts; account temporarily locked
+          content:
+            '*/*':
+              schema:
+                type: object
+  /api/orders/{id}/ship:
+    post:
+      tags:
+      - Orders
+      summary: Ship a paid order
+      description: Transitions a paid order to the shipped state.
+      operationId: shipOrder
+      parameters:
+      - name: id
+        in: path
+        description: Unique order identifier
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Order shipped
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+  /orders/{id}/ship:
+    post:
+      tags:
+      - Orders
+      summary: Ship a paid order
+      description: Transitions a paid order to the shipped state.
+      operationId: shipOrder_1
+      parameters:
+      - name: id
+        in: path
+        description: Unique order identifier
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Order shipped
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+  /api/orders/{id}/payment:
+    post:
+      tags:
+      - Orders
+      summary: Process payment for an order
+      description: Transitions a pending order to a paid state.
+      operationId: processPayment
+      parameters:
+      - name: id
+        in: path
+        description: Unique order identifier
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Payment processed
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+  /orders/{id}/payment:
+    post:
+      tags:
+      - Orders
+      summary: Process payment for an order
+      description: Transitions a pending order to a paid state.
+      operationId: processPayment_1
+      parameters:
+      - name: id
+        in: path
+        description: Unique order identifier
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Payment processed
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+  /orders/{id}/notify-user/{username}:
+    post:
+      tags:
+      - Orders
+      operationId: notifyUser
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: username
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+  /api/orders/{id}/notify-user/{username}:
+    post:
+      tags:
+      - Orders
+      operationId: notifyUser_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: username
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+  /api/orders/{id}/notify-test:
+    post:
+      tags:
+      - Orders
+      operationId: notifyTest
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+  /orders/{id}/notify-test:
+    post:
+      tags:
+      - Orders
+      operationId: notifyTest_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+  /api/orders/{id}/deliver:
+    post:
+      tags:
+      - Orders
+      summary: Deliver a shipped order
+      description: Transitions a shipped order to the delivered state.
+      operationId: deliverOrder
+      parameters:
+      - name: id
+        in: path
+        description: Unique order identifier
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Order delivered
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+  /orders/{id}/deliver:
+    post:
+      tags:
+      - Orders
+      summary: Deliver a shipped order
+      description: Transitions a shipped order to the delivered state.
+      operationId: deliverOrder_1
+      parameters:
+      - name: id
+        in: path
+        description: Unique order identifier
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Order delivered
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+  /orders/{id}/cancel:
+    post:
+      tags:
+      - Orders
+      summary: Cancel an order
+      description: Cancels an order when allowed by the domain lifecycle.
+      operationId: cancelOrder
+      parameters:
+      - name: id
+        in: path
+        description: Unique order identifier
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Order cancelled
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+  /api/orders/{id}/cancel:
+    post:
+      tags:
+      - Orders
+      summary: Cancel an order
+      description: Cancels an order when allowed by the domain lifecycle.
+      operationId: cancelOrder_1
+      parameters:
+      - name: id
+        in: path
+        description: Unique order identifier
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Order cancelled
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+  /orders:
+    get:
+      tags:
+      - Orders
+      summary: List orders
+      description: "Lists orders for a customer, optionally filtered by status. Non-admin\
+        \ callers are always scoped to their own orders."
+      operationId: listOrders
+      parameters:
+      - name: customerId
+        in: query
+        description: Optional customer identifier (admin only)
+        required: false
+        schema:
+          type: string
+      - name: status
+        in: query
+        description: Optional status filter
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Orders listed
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OrderResponse"
+    post:
+      tags:
+      - Orders
+      summary: Create a new order
+      description: Creates a pending order from a valid request payload.
+      operationId: createOrder
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequest"
+        required: true
+      responses:
+        "201":
+          description: Order created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "400":
+          description: Invalid request body
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+  /api/orders:
+    get:
+      tags:
+      - Orders
+      summary: List orders
+      description: "Lists orders for a customer, optionally filtered by status. Non-admin\
+        \ callers are always scoped to their own orders."
+      operationId: listOrders_1
+      parameters:
+      - name: customerId
+        in: query
+        description: Optional customer identifier (admin only)
+        required: false
+        schema:
+          type: string
+      - name: status
+        in: query
+        description: Optional status filter
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Orders listed
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OrderResponse"
+    post:
+      tags:
+      - Orders
+      summary: Create a new order
+      description: Creates a pending order from a valid request payload.
+      operationId: createOrder_1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequest"
+        required: true
+      responses:
+        "201":
+          description: Order created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "400":
+          description: Invalid request body
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+  /inventory/products:
+    post:
+      tags:
+      - Inventory
+      summary: Create product entry
+      description: Creates a product record and stores its initial stock level.
+      operationId: createProduct
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductRequest"
+        required: true
+      responses:
+        "201":
+          description: Product created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+  /api/inventory/products:
+    post:
+      tags:
+      - Inventory
+      summary: Create product entry
+      description: Creates a product record and stores its initial stock level.
+      operationId: createProduct_1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductRequest"
+        required: true
+      responses:
+        "201":
+          description: Product created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+  /api/cart:
+    get:
+      tags:
+      - Cart
+      summary: List cart items
+      description: Returns all cart items owned by the authenticated user.
+      operationId: getCart
+      responses:
+        "200":
+          description: Cart items returned (possibly empty)
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CartResponse"
+    post:
+      tags:
+      - Cart
+      summary: Add an item to the cart
+      description: Creates a new cart item for the authenticated user.
+      operationId: addCartItem
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CartItemRequest"
+        required: true
+      responses:
+        "200":
+          description: Cart item created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CartResponse"
+        "400":
+          description: "Validation failed (blank productId, quantity < 1, unknown\
+            \ product)"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CartResponse"
+  /cart:
+    get:
+      tags:
+      - Cart
+      summary: List cart items
+      description: Returns all cart items owned by the authenticated user.
+      operationId: getCart_1
+      responses:
+        "200":
+          description: Cart items returned (possibly empty)
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CartResponse"
+    post:
+      tags:
+      - Cart
+      summary: Add an item to the cart
+      description: Creates a new cart item for the authenticated user.
+      operationId: addCartItem_1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CartItemRequest"
+        required: true
+      responses:
+        "200":
+          description: Cart item created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CartResponse"
+        "400":
+          description: "Validation failed (blank productId, quantity < 1, unknown\
+            \ product)"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CartResponse"
+  /health:
+    get:
+      tags:
+      - health-controller
+      operationId: health
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /auth/me:
+    get:
+      tags:
+      - Authentication
+      summary: Get the current user's profile
+      description: "Resolves the authenticated principal and returns id, username,\
+        \ email, and ROLE_-prefixed roles."
+      operationId: me
+      responses:
+        "200":
+          description: Profile of the authenticated user
+          content:
+            '*/*':
+              schema:
+                type: object
+                additionalProperties: {}
+        "401":
+          description: No valid bearer token
+          content:
+            '*/*':
+              schema:
+                type: object
+                additionalProperties: {}
+  /products/{id}:
+    get:
+      tags:
+      - Inventory
+      summary: Get product details
+      description: Fetches a single product by its identifier.
+      operationId: getProduct
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Product found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+        "404":
+          description: Product not found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+  /api/products/{id}:
+    get:
+      tags:
+      - Inventory
+      summary: Get product details
+      description: Fetches a single product by its identifier.
+      operationId: getProduct_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Product found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+        "404":
+          description: Product not found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+  /api/products:
+    get:
+      tags:
+      - Inventory
+      summary: List products
+      description: "Returns a paginated, searchable product catalog page."
+      operationId: listProducts
+      parameters:
+      - name: search
+        in: query
+        description: Free-text search across name and description
+        required: false
+        schema:
+          type: string
+      - name: category
+        in: query
+        description: Exact category filter (case-insensitive)
+        required: false
+        schema:
+          type: string
+      - name: page
+        in: query
+        description: Page number (0-based)
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        description: Page size (1-100)
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+      responses:
+        "200":
+          description: Products returned
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProductListResponse"
+  /products:
+    get:
+      tags:
+      - Inventory
+      summary: List products
+      description: "Returns a paginated, searchable product catalog page."
+      operationId: listProducts_1
+      parameters:
+      - name: search
+        in: query
+        description: Free-text search across name and description
+        required: false
+        schema:
+          type: string
+      - name: category
+        in: query
+        description: Exact category filter (case-insensitive)
+        required: false
+        schema:
+          type: string
+      - name: page
+        in: query
+        description: Page number (0-based)
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        description: Page size (1-100)
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+      responses:
+        "200":
+          description: Products returned
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProductListResponse"
+  /orders/{id}:
+    get:
+      tags:
+      - Orders
+      summary: Get one order
+      description: Fetches an order by its identifier.
+      operationId: getOrder
+      parameters:
+      - name: id
+        in: path
+        description: Unique order identifier
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Order found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+  /api/orders/{id}:
+    get:
+      tags:
+      - Orders
+      summary: Get one order
+      description: Fetches an order by its identifier.
+      operationId: getOrder_1
+      parameters:
+      - name: id
+        in: path
+        description: Unique order identifier
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Order found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+  /orders/status/{orderId}:
+    get:
+      tags:
+      - Orders
+      summary: Get order status
+      description: Returns the current status of an order.
+      operationId: getOrderStatus
+      parameters:
+      - name: orderId
+        in: path
+        description: Unique order identifier
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Order status returned
+          content:
+            '*/*':
+              schema:
+                type: object
+                additionalProperties: {}
+  /api/orders/status/{orderId}:
+    get:
+      tags:
+      - Orders
+      summary: Get order status
+      description: Returns the current status of an order.
+      operationId: getOrderStatus_1
+      parameters:
+      - name: orderId
+        in: path
+        description: Unique order identifier
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Order status returned
+          content:
+            '*/*':
+              schema:
+                type: object
+                additionalProperties: {}
+  /api/inventory/reserved:
+    get:
+      tags:
+      - Inventory
+      summary: Reserved inventory report
+      description: Returns per-product stock with quantities reserved by pending orders.
+      operationId: getReservedInventory
+      responses:
+        "200":
+          description: Reserved inventory returned
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReservedInventoryItem"
+  /inventory/reserved:
+    get:
+      tags:
+      - Inventory
+      summary: Reserved inventory report
+      description: Returns per-product stock with quantities reserved by pending orders.
+      operationId: getReservedInventory_1
+      responses:
+        "200":
+          description: Reserved inventory returned
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReservedInventoryItem"
+  /inventory:
+    get:
+      tags:
+      - Inventory
+      summary: List inventory
+      description: Returns the first available inventory snapshot from the application
+        query handler.
+      operationId: getInventory
+      responses:
+        "200":
+          description: Inventory returned
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/InventoryResponse"
+  /api/inventory:
+    get:
+      tags:
+      - Inventory
+      summary: List inventory
+      description: Returns the first available inventory snapshot from the application
+        query handler.
+      operationId: getInventory_1
+      responses:
+        "200":
+          description: Inventory returned
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/InventoryResponse"
+  /api/info:
+    get:
+      tags:
+      - api-info-controller
+      operationId: apiInfo
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /api/admin/audit/products/{id}:
+    get:
+      tags:
+      - Audit
+      summary: Product change history
+      description: Returns the Envers revision history for a product.
+      operationId: productHistory
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Audit history returned
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AuditEntryResponse"
+  /api/admin/audit/orders/{id}:
+    get:
+      tags:
+      - Audit
+      summary: Order change history
+      description: Returns the Envers revision history for an order.
+      operationId: orderHistory
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Audit history returned
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AuditEntryResponse"
+  /admin/inventory:
+    get:
+      tags:
+      - admin-inventory-controller
+      operationId: inventory
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+components:
+  schemas:
+    UpdateProductRequest:
+      type: object
+      description: Payload used to update an existing product entry
+      properties:
+        name:
+          type: string
+          description: Product name
+          example: Desk Lamp
+          minLength: 1
+        description:
+          type: string
+          description: Product description
+          example: Compact desk lamp
+        price:
+          type: string
+          description: Product price
+          example: 45.0
+          minLength: 1
+        currency:
+          type: string
+          description: Currency code
+          example: USD
+          minLength: 1
+        quantityInStock:
+          type: integer
+          format: int32
+          description: Inventory quantity on hand
+          example: 25
+          minimum: 0
+        category:
+          type: string
+          description: Product category
+          example: lighting
+      required:
+      - currency
+      - name
+      - price
+      - quantityInStock
+    ProductResponse:
+      type: object
+      description: Product payload returned by the REST API
+      properties:
+        id:
+          type: string
+          description: Product identifier
+          example: SKU-001
+        name:
+          type: string
+          description: Product name
+          example: Desk Lamp
+        description:
+          type: string
+          description: Product description
+          example: Compact desk lamp
+        price:
+          type: string
+          description: Unit price
+          example: 45.0
+        currency:
+          type: string
+          description: Currency code
+          example: USD
+        quantityInStock:
+          type: integer
+          format: int32
+          description: Inventory quantity on hand
+          example: 25
+        category:
+          type: string
+          description: Product category
+          example: lighting
+    UpdateCartItemRequest:
+      type: object
+      description: Payload used to update a cart item. productId is optional; when
+        omitted the item keeps its current product.
+      properties:
+        productId:
+          type: string
+          description: New product id (optional - omit to only change quantity)
+          example: product-1
+        quantity:
+          type: integer
+          format: int32
+          description: Quantity of the product in the cart
+          example: 2
+          minimum: 1
+    CartResponse:
+      type: object
+      description: Cart item returned to the client
+      properties:
+        id:
+          type: string
+        customerId:
+          type: string
+        productId:
+          type: string
+        quantity:
+          type: integer
+          format: int32
+    RegisterRequest:
+      type: object
+      description: Payload for POST /auth/register. Creates an account with ROLE_CUSTOMER.
+      properties:
+        username:
+          type: string
+          description: Unique username; becomes the order customerId for this user
+          example: alice
+          minLength: 1
+        email:
+          type: string
+          format: email
+          description: Unique email address
+          example: alice@example.com
+          minLength: 1
+        password:
+          type: string
+          description: "Password: minimum 8 characters, must contain at least one\
+            \ letter and one digit"
+          example: s3cret-pass
+          maxLength: 2147483647
+          minLength: 8
+      required:
+      - email
+      - password
+      - username
+    RegisterResponse:
+      type: object
+      description: Returned after successful registration; the account is created
+        and tokens are issued immediately
+      properties:
+        username:
+          type: string
+          description: Username of the created account
+          example: alice
+        accessToken:
+          type: string
+          description: "JWT access token for Authorization: Bearer headers"
+        refreshToken:
+          type: string
+          description: JWT refresh token for POST /auth/refresh
+        expiresIn:
+          type: integer
+          format: int64
+          description: Access token lifetime in seconds
+          example: 900
+    ApiError:
+      type: object
+      description: Standard error body returned by every non-2xx response
+      properties:
+        timestamp:
+          type: string
+          description: ISO-8601 timestamp of when the error occurred
+        status:
+          type: integer
+          format: int32
+          description: HTTP status code
+          example: 404
+        error:
+          type: string
+          description: Short error category
+          example: Not found
+        message:
+          type: string
+          description: Human-readable detail message
+        path:
+          type: string
+          description: Request path that produced the error
+          example: /api/orders/unknown
+    RefreshRequest:
+      type: object
+      description: Body for POST /auth/refresh
+      properties:
+        refreshToken:
+          type: string
+          description: Refresh token previously returned by login/register
+          minLength: 1
+      required:
+      - refreshToken
+    LoginRequest:
+      type: object
+      description: Credentials for POST /auth/login
+      properties:
+        username:
+          type: string
+          description: Username of the account
+          example: customer
+          minLength: 1
+        password:
+          type: string
+          description: Account password
+          example: customer
+          minLength: 1
+      required:
+      - password
+      - username
+    OrderResponse:
+      type: object
+      description: Order payload returned by the REST API
+      properties:
+        id:
+          type: string
+          description: Order identifier
+          example: ord-123
+        customerId:
+          type: string
+          description: Customer identifier
+          example: customer-001
+        status:
+          type: string
+          description: Order lifecycle status
+          example: PENDING
+        totalAmount:
+          type: number
+          description: Order total amount
+          example: 25.0
+        currency:
+          type: string
+          description: Currency code
+          example: USD
+        createdAt:
+          type: string
+          format: date-time
+          description: Order creation timestamp
+        reservedUntil:
+          type: string
+          format: date-time
+          description: Reservation expiry timestamp
+        reservationSecondsRemaining:
+          type: integer
+          format: int64
+          description: Server-computed seconds left before the reservation expires
+            (0 when not pending)
+    CreateOrderItemRequest:
+      type: object
+      description: Order item payload for a product reservation
+      properties:
+        productId:
+          type: string
+          description: Identifier of the product to reserve
+          example: SKU-001
+          minLength: 1
+        quantity:
+          type: integer
+          format: int32
+          description: Requested item quantity
+          example: 2
+          minimum: 1
+      required:
+      - productId
+    CreateOrderRequest:
+      type: object
+      description: Payload used to create a new order
+      properties:
+        customerId:
+          type: string
+          description: Customer identifier
+          example: customer-001
+          minLength: 1
+        items:
+          type: array
+          description: Order items to reserve
+          items:
+            $ref: "#/components/schemas/CreateOrderItemRequest"
+          minItems: 1
+      required:
+      - customerId
+      - items
+    CreateProductRequest:
+      type: object
+      description: Payload used to create a new product entry
+      properties:
+        name:
+          type: string
+          description: Product name
+          example: Desk Lamp
+          minLength: 1
+        description:
+          type: string
+          description: Product description
+          example: Compact desk lamp
+        price:
+          type: string
+          description: Product price
+          example: 45.0
+          minLength: 1
+        currency:
+          type: string
+          description: Currency code
+          example: USD
+          minLength: 1
+        quantityInStock:
+          type: integer
+          format: int32
+          description: Inventory quantity on hand
+          example: 25
+          minimum: 0
+        category:
+          type: string
+          description: Product category
+          example: lighting
+      required:
+      - currency
+      - name
+      - price
+      - quantityInStock
+    CartItemRequest:
+      type: object
+      description: Payload used to create or update a cart item
+      properties:
+        productId:
+          type: string
+          description: Identifier of the product to add to the cart
+          example: product-1
+          minLength: 1
+        quantity:
+          type: integer
+          format: int32
+          description: Quantity of the product in the cart
+          example: 2
+          minimum: 1
+      required:
+      - productId
+    ProductListResponse:
+      type: object
+      description: Paginated product catalog page
+      properties:
+        content:
+          type: array
+          description: Products on this page
+          items:
+            $ref: "#/components/schemas/ProductResponse"
+        total:
+          type: integer
+          format: int64
+          description: Total number of matching products
+          example: 42
+        page:
+          type: integer
+          format: int32
+          description: Current page number (0-based)
+          example: 0
+        size:
+          type: integer
+          format: int32
+          description: Page size
+          example: 20
+    ReservedInventoryItem:
+      type: object
+      properties:
+        productId:
+          type: string
+        name:
+          type: string
+        quantityInStock:
+          type: integer
+          format: int32
+        quantityReserved:
+          type: integer
+          format: int32
+        quantityAvailable:
+          type: integer
+          format: int32
+    InventoryResponse:
+      type: object
+      description: Inventory payload returned by the REST API
+      properties:
+        productId:
+          type: string
+          description: Product identifier
+          example: SKU-001
+        name:
+          type: string
+          description: Product name
+          example: Widget
+        quantityInStock:
+          type: integer
+          format: int32
+          description: Current stock quantity
+          example: 25
+    AuditEntryResponse:
+      type: object
+      properties:
+        revision:
+          type: integer
+          format: int64
+        timestamp:
+          type: integer
+          format: int64
+        author:
+          type: string
+        revisionType:
+          type: string
+        snapshot:
+          type: object
+          additionalProperties: {}
+  securitySchemes:
+    bearerAuth:
+      type: http
+      name: bearerAuth
+      scheme: bearer
+      bearerFormat: JWT

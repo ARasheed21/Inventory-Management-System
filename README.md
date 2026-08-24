@@ -366,6 +366,8 @@ Key properties (see `src/main/resources/application.yml` and `.env.example`):
 - `src/main/java/com/example/inventory/web` — REST controllers, DTOs, exception handling
 - `src/test/java` — unit and integration tests (72 tests)
 - `docs/prd-compliance-gap-report.md` — PRD compliance status; all identified gaps are resolved
+- `docs/api-contract/openapi.yaml` — committed OpenAPI 3 contract (regenerate via `mvn test -Dtest=OpenApiContractExportTest` after any API change); drive frontend clients from this file
+- `docs/api-contract/asyncapi-ws.md` — WebSocket/STOMP contract: destinations, auth, and push payload shapes
 - `docs/development-pitfalls.md` — build/testing gotchas and project conventions; read before extending the codebase
 - `docs/frontend-req/` — frontend requirements contract and preparation plan
 
