@@ -7,7 +7,7 @@ This report compares the PRD user stories and contract expectations in [docs/prd
 
 ## Verification Evidence
 The current repository was re-verified with Maven test evidence from the latest run:
-- `mvn test` -> `Tests run: 58, Failures: 0, Errors: 0, Skipped: 0`
+- `mvn test` -> `Tests run: 61, Failures: 0, Errors: 0, Skipped: 0`
 - `BUILD SUCCESS`
 
 That result is consistent with the current controller, domain, persistence, security, registration, and benchmark proof points.
@@ -79,17 +79,15 @@ Resolution evidence:
 
 ### Still missing
 
-#### Gap 5. Payment failure notification — NOT IMPLEMENTED
+#### Gap 5. Payment failure notification — RESOLVED
 PRD story: 12
 
-Evidence:
-- [ProcessPaymentCommandHandler.java](../src/main/java/com/example/inventory/application/handlers/ProcessPaymentCommandHandler.java) performs the state transition only; there is no failure event, notification handler, or transport path.
-- No notification infrastructure or API contract exists for failed-payment messaging.
-
-Task backlog:
-1. Add payment failure domain events and notification handlers.
-2. Introduce a notification channel abstraction (the WebSocket service is a candidate transport).
-3. Add test coverage for failed-payment messaging and order state.
+Resolution evidence:
+- New application-layer port [PaymentFailureNotifier.java](../src/main/java/com/example/inventory/application/ports/PaymentFailureNotifier.java) with a WebSocket adapter ([WebSocketPaymentFailureNotifier.java](../src/main/java/com/example/inventory/infrastructure/websocket/WebSocketPaymentFailureNotifier.java)) — the handler depends on the port only, per the hexagonal constitution.
+- Paying an order whose reservation has expired now fails (`409 Conflict`) instead of silently succeeding: [ProcessPaymentCommandHandler.java](../src/main/java/com/example/inventory/application/handlers/ProcessPaymentCommandHandler.java) guards with `Order.isReservationExpired`, publishes `{orderId, status: PAYMENT_FAILED, reason}` to the customer's `/user/queue/orders`, then rethrows.
+- Invalid payable-state transitions (already paid/cancelled) follow the same notify-then-fail path.
+- Unknown-order payment attempts return `404` (aligned with ship/deliver handlers).
+- All behaviors verified by [PaymentFailureNotificationIntegrationTest.java](../src/test/java/com/example/inventory/web/PaymentFailureNotificationIntegrationTest.java) (expired-order push + 409, no false notification on successful payment, unknown order 404).
 
 #### Gap 7. Audit-history read API — NOT IMPLEMENTED
 PRD stories: 20, 21
@@ -123,10 +121,9 @@ Task backlog:
 2. Add admin read APIs for stock-change history.
 
 ## Bottom Line
-The repository now satisfies the PRD's core customer-facing catalog, cart, admin inventory write, persistent account/registration, warehouse fulfillment, and reservation countdown/notification flows, with a green 58-test suite. The system still lacks payment-failure notifications, audit-history endpoints, reserved-inventory reporting, and true Keycloak integration.
+The repository now satisfies the PRD's core customer-facing catalog, cart, admin inventory write, persistent account/registration, warehouse fulfillment, reservation countdown/notification, and payment-failure notification flows, with a green 61-test suite. The system still lacks audit-history endpoints, reserved-inventory reporting, and true Keycloak integration.
 
 ## Recommended delivery order
 1. Enforce non-default JWT secret in prod + optional config-gated Keycloak issuer validation (Gap 8 remainder).
-2. Wire payment-failure events to the existing WebSocket channel (Gap 5).
-3. Add Product @Audited plus audit-history read endpoints (Gaps 7, 10).
-4. Add reserved-inventory reporting (Gap 9).
+2. Add Product @Audited plus audit-history read endpoints (Gaps 7, 10).
+3. Add reserved-inventory reporting (Gap 9).

@@ -57,7 +57,9 @@ class OrderApplicationHandlersTest {
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
         InMemoryProductRepository productRepository = new InMemoryProductRepository();
         PlaceOrderCommandHandler placeHandler = new PlaceOrderCommandHandler(orderRepository, productRepository);
-        ProcessPaymentCommandHandler paymentHandler = new ProcessPaymentCommandHandler(orderRepository);
+        ProcessPaymentCommandHandler paymentHandler = new ProcessPaymentCommandHandler(orderRepository,
+                (orderId, customerId, reason) -> {
+                });
 
         OrderResponse created = placeHandler.handle(new PlaceOrderCommand(
                 new CreateOrderRequest("c-1", List.of(new CreateOrderItemRequest("product-1", 1)))));
@@ -138,15 +140,15 @@ class OrderApplicationHandlersTest {
         }
 
         @Override
-        public int cancelExpiredPendingOrders(Instant now) {
-            int cancelledCount = 0;
+        public List<Order> cancelExpiredPendingOrders(Instant now) {
+            List<Order> cancelled = new ArrayList<>();
             for (Order order : savedOrders) {
                 if (order.getStatus() == OrderStatus.PENDING && order.isReservationExpired(now)) {
                     order.cancel();
-                    cancelledCount++;
+                    cancelled.add(order);
                 }
             }
-            return cancelledCount;
+            return cancelled;
         }
 
         @Override
