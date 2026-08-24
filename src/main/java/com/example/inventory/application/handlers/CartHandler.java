@@ -35,12 +35,13 @@ public class CartHandler {
     }
 
     public CartItem updateCartItem(String customerId, String itemId, String productId, int quantity) {
-        validateProduct(productId, quantity);
         CartItem item = cartRepository.findById(itemId)
                 .filter(existing -> existing.customerId().equals(customerId))
                 .orElseThrow(() -> new IllegalArgumentException("Cart item not found or access denied"));
-        if (!item.productId().equals(productId)) {
-            item = new CartItem(item.id(), customerId, productId, quantity);
+        String effectiveProductId = productId != null && !productId.isBlank() ? productId : item.productId();
+        validateProduct(effectiveProductId, quantity);
+        if (!item.productId().equals(effectiveProductId)) {
+            item = new CartItem(item.id(), customerId, effectiveProductId, quantity);
         } else {
             item = item.withQuantity(quantity);
         }

@@ -21,7 +21,7 @@ import com.example.inventory.web.dto.CartItemRequest;
 import com.example.inventory.web.dto.CartResponse;
 
 @RestController
-@RequestMapping("/api/cart")
+@RequestMapping({ "/api/cart", "/cart" })
 public class CartController {
 
     private final CartHandler cartHandler;
@@ -45,7 +45,7 @@ public class CartController {
 
     @PutMapping("/{itemId}")
     public ResponseEntity<CartResponse> updateCartItem(Principal principal, @PathVariable String itemId,
-            @Valid @RequestBody CartItemRequest request) {
+            @Valid @RequestBody com.example.inventory.web.dto.UpdateCartItemRequest request) {
         var item = cartHandler.updateCartItem(principal.getName(), itemId, request.productId(), request.quantity());
         return ResponseEntity.ok(new CartResponse(item.id(), item.customerId(), item.productId(), item.quantity()));
     }

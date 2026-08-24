@@ -1,0 +1,18 @@
+# Local profile: in-memory H2 database so no PostgreSQL installation is required.
+# Run with: mvn spring-boot:run "-Dspring-boot.run.profiles=dev,local"
+spring:
+  datasource:
+    url: jdbc:h2:mem:inventory;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema-h2.sql
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
