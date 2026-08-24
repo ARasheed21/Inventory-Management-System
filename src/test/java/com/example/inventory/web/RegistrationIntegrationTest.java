@@ -102,6 +102,31 @@ class RegistrationIntegrationTest {
     }
 
     @Test
+    void shouldRejectWeakPasswords() throws Exception {
+        mockMvc.perform(post("/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                          "username": "weakpass1",
+                          "email": "weak1@example.com",
+                          "password": "short1"
+                        }
+                        """))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(post("/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                          "username": "weakpass2",
+                          "email": "weak2@example.com",
+                          "password": "onlyletters"
+                        }
+                        """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void shouldRejectInvalidRegistrationPayload() throws Exception {
         mockMvc.perform(post("/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)

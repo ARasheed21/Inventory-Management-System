@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.inventory.infrastructure.security.JwtService;
+import com.example.inventory.infrastructure.security.LoginRateLimiter;
 import com.example.inventory.infrastructure.security.UserRegistry;
 import com.example.inventory.web.dto.LoginRequest;
 import com.example.inventory.web.dto.RefreshRequest;
@@ -34,13 +35,15 @@ public class AuthController {
     private final UserRegistry userRegistry;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
+    private final LoginRateLimiter loginRateLimiter;
 
     public AuthController(AuthenticationManager authenticationManager, UserRegistry userRegistry,
-            JwtService jwtService, PasswordEncoder passwordEncoder) {
+            JwtService jwtService, PasswordEncoder passwordEncoder, LoginRateLimiter loginRateLimiter) {
         this.authenticationManager = authenticationManager;
         this.userRegistry = userRegistry;
         this.jwtService = jwtService;
         this.passwordEncoder = passwordEncoder;
+        this.loginRateLimiter = loginRateLimiter;
     }
 
     @PostMapping("/register")
@@ -63,6 +66,9 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
+        if (loginRateLimiter.isLocked(request.username())) {
+            return tooManyAttempts();
+        }
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.username(), request.password()));
@@ -73,8 +79,18 @@ public class AuthController {
             }
             return ResponseEntity.ok(jwtService.generateTokens(user.get()));
         } catch (AuthenticationException ex) {
+            loginRateLimiter.recordFailure(request.username());
             return unauthorized("/auth/login", "Invalid username or password");
         }
+    }
+
+    private ResponseEntity<Map<String, Object>> tooManyAttempts() {
+        return ResponseEntity.status(429)
+                .body(Map.of(
+                        "status", 429,
+                        "error", "Too Many Requests",
+                        "message", "Too many failed login attempts. Try again later.",
+                        "path", "/auth/login"));
     }
 
     @PostMapping("/refresh")
