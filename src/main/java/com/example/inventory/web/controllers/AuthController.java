@@ -21,6 +21,10 @@ import com.example.inventory.infrastructure.security.JwtService;
 import com.example.inventory.infrastructure.security.UserRegistry;
 import com.example.inventory.web.dto.LoginRequest;
 import com.example.inventory.web.dto.RefreshRequest;
+import com.example.inventory.web.dto.RegisterRequest;
+
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.http.HttpStatus;
 
 @RestController
 @RequestMapping("/auth")
@@ -29,12 +33,32 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final UserRegistry userRegistry;
     private final JwtService jwtService;
+    private final PasswordEncoder passwordEncoder;
 
     public AuthController(AuthenticationManager authenticationManager, UserRegistry userRegistry,
-            JwtService jwtService) {
+            JwtService jwtService, PasswordEncoder passwordEncoder) {
         this.authenticationManager = authenticationManager;
         this.userRegistry = userRegistry;
         this.jwtService = jwtService;
+        this.passwordEncoder = passwordEncoder;
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
+        if (userRegistry.existsByUsernameOrEmail(request.username(), request.email())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(com.example.inventory.web.api.ApiErrorBody.of(409, "Conflict",
+                            "Username or email already registered", "/auth/register"));
+        }
+        UserRegistry.RegisteredUser user = userRegistry.register(
+                request.username(), request.email(), request.password(), passwordEncoder);
+        var tokens = jwtService.generateTokens(user);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(Map.of(
+                        "username", user.username(),
+                        "accessToken", tokens.accessToken(),
+                        "refreshToken", tokens.refreshToken(),
+                        "expiresIn", tokens.expiresIn()));
     }
 
     @PostMapping("/login")

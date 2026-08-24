@@ -1,45 +1,84 @@
 package com.example.inventory.infrastructure.security;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
+import java.util.UUID;
 
-import org.springframework.security.core.userdetails.User;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.context.annotation.Bean;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.stereotype.Component;
+
+import com.example.inventory.infrastructure.persistence.jpa.AccountJpaEntity;
+import com.example.inventory.infrastructure.persistence.jpa.AccountJpaEntityRepository;
 
 @Component("securityUserRegistry")
 public class UserRegistry {
 
-    private final Map<String, RegisteredUser> registeredUsers;
-    private final UserDetailsService userDetailsService;
+    private final AccountJpaEntityRepository accountRepository;
 
-    public UserRegistry(PasswordEncoder passwordEncoder) {
-        this.registeredUsers = Map.of(
-                "admin", new RegisteredUser("admin-1", "admin", "admin@example.com", "admin", List.of("ADMIN")),
-                "warehouse",
-                new RegisteredUser("warehouse-1", "warehouse", "warehouse@example.com", "warehouse",
-                        List.of("WAREHOUSE")),
-                "customer",
-                new RegisteredUser("customer-1", "customer", "customer@example.com", "customer", List.of("CUSTOMER")));
-        this.userDetailsService = new InMemoryUserDetailsManager(
-                registeredUsers.values().stream()
-                        .map(user -> User.withUsername(user.username())
-                                .password(passwordEncoder.encode(user.password()))
-                                .roles(user.roles().toArray(String[]::new))
-                                .build())
-                        .collect(Collectors.toList()));
+    public UserRegistry(AccountJpaEntityRepository accountRepository) {
+        this.accountRepository = accountRepository;
+    }
+
+    @Bean
+    public ApplicationRunner seedAccounts(PasswordEncoder passwordEncoder) {
+        return args -> {
+            if (accountRepository.count() > 0) {
+                return;
+            }
+            accountRepository.save(new AccountJpaEntity(
+                    UUID.randomUUID().toString(), "admin", "admin@example.com",
+                    passwordEncoder.encode("admin"), List.of("ADMIN")));
+            accountRepository.save(new AccountJpaEntity(
+                    UUID.randomUUID().toString(), "warehouse", "warehouse@example.com",
+                    passwordEncoder.encode("warehouse"), List.of("WAREHOUSE")));
+            accountRepository.save(new AccountJpaEntity(
+                    UUID.randomUUID().toString(), "customer", "customer@example.com",
+                    passwordEncoder.encode("customer"), List.of("CUSTOMER")));
+        };
     }
 
     public UserDetailsService userDetailsService() {
-        return userDetailsService;
+        return username -> accountRepository.findByUsername(username)
+                .map(this::toUserDetails)
+                .orElseThrow(() -> new UsernameNotFoundException("Unknown user: " + username));
     }
 
     public Optional<RegisteredUser> findByUsername(String username) {
-        return Optional.ofNullable(registeredUsers.get(username));
+        return accountRepository.findByUsername(username).map(this::toRegisteredUser);
+    }
+
+    public boolean existsByUsernameOrEmail(String username, String email) {
+        return accountRepository.existsByUsernameIgnoreCase(username)
+                || accountRepository.existsByEmailIgnoreCase(email);
+    }
+
+    public RegisteredUser register(String username, String email, String rawPassword,
+            PasswordEncoder passwordEncoder) {
+        AccountJpaEntity account = accountRepository.save(new AccountJpaEntity(
+                UUID.randomUUID().toString(),
+                username,
+                email,
+                passwordEncoder.encode(rawPassword),
+                List.of("CUSTOMER")));
+        return toRegisteredUser(account);
+    }
+
+    private UserDetails toUserDetails(AccountJpaEntity account) {
+        return org.springframework.security.core.userdetails.User
+                .withUsername(account.getUsername())
+                .password(account.getPasswordHash())
+                .roles(account.getRoles().toArray(String[]::new))
+                .build();
+    }
+
+    private RegisteredUser toRegisteredUser(AccountJpaEntity account) {
+        return new RegisteredUser(account.getExternalId(), account.getUsername(), account.getEmail(),
+                account.getPasswordHash(), account.getRoles());
     }
 
     public record RegisteredUser(String id, String username, String email, String password, List<String> roles) {
