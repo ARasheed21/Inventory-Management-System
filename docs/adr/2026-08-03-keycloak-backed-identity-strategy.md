@@ -1,7 +1,7 @@
 # Keycloak-backed Identity Strategy
 
 ## Status
-Accepted
+Superseded by [2026-08-24-self-issued-jwt-with-persistent-accounts.md](2026-08-24-self-issued-jwt-with-persistent-accounts.md). Keycloak remains an optional future migration path for SSO/MFA/federation; it is not part of the current implementation.
 
 ## Context
 The application must expose secure role-aware endpoints while keeping the security model aligned with modern OAuth2 resource-server practices.
