@@ -4,10 +4,15 @@ A Spring Boot 3 backend for an e-commerce inventory platform: product catalog, c
 
 ## Features
 
-- **Authentication** — `POST /auth/login`, `POST /auth/refresh`, `GET /auth/me` returning JWT access + refresh tokens (HS256 by default, RS256 optional). Tokens carry `userId`, `email`, and `ROLE_`-prefixed `roles`.
-- **Product catalog** — paginated, searchable, category-filterable browsing (`GET /api/products`) and product details (`GET /api/products/{id}`). Admin-only create/update via `/api/inventory/products`.
+- **Authentication** — `POST /auth/register` (self-service signup returning tokens), `POST /auth/login`, `POST /auth/refresh`, `GET /auth/me` returning JWT access + refresh tokens (HS256 by default, RS256 optional). Tokens carry `userId`, `email`, and `ROLE_`-prefixed `roles`. Accounts are persisted in the database with BCrypt-hashed passwords.
+- **Security hardening** — password policy on registration (min 8 chars, letter + digit), per-username login rate limiting (returns `429 Too Many Requests` after repeated failures), and a startup guard that refuses to boot with the default `jwt.secret` under production profiles.
+- **Product catalog** — paginated, searchable, category-filterable browsing (`GET /api/products`) and product details (`GET /api/products/{id}`). Admin-only create/update via `/api/inventory/products`, with every stock change captured in an Envers audit trail.
 - **Shopping cart** — CRUD under `/api/cart`, scoped to the authenticated customer.
 - **Orders** — place orders, pay, cancel, query status/history. Customers can only see and act on their own orders; server derives ownership from the JWT.
+- **Warehouse fulfillment** — `POST /api/orders/{id}/ship` and `POST /api/orders/{id}/deliver` (WAREHOUSE/ADMIN only) drive orders through PAID → SHIPPED → DELIVERED; invalid transitions return `409`.
+- **Reservation UX** — every order response carries a server-computed `reservationSecondsRemaining`; expired reservations cancel automatically and push `RESERVATION_EXPIRED` to the owner's WebSocket queue. Paying past the reservation window fails with `409` and pushes `PAYMENT_FAILED`.
+- **Audit history** — admin-only revision history for products and orders via `GET /api/admin/audit/products/{id}` and `GET /api/admin/audit/orders/{id}`.
+- **Reserved inventory report** — `GET /api/inventory/reserved` (WAREHOUSE/ADMIN) shows per-product stock, reserved-by-pending-orders, and available quantities.
 - **Real-time updates** — STOMP over WebSocket at `/api/ws` with JWT authentication at CONNECT; user queue `/user/queue/orders` and topic `/topic/orders`.
 - **Consistent error format** — every error (including security 401/403) returns `{timestamp, status, error, message, path}`.
 - **OpenAPI/Swagger** — interactive docs generated from controller annotations.
@@ -69,7 +74,7 @@ The API is served under the context path `/api`:
 
 ## Default credentials
 
-In-memory users created at startup:
+Database-persisted accounts seeded at startup (only if the `accounts` table is empty); they survive restarts. New customers can self-register via `POST /auth/register`.
 
 | User | Password | Roles |
 |---|---|---|
@@ -79,9 +84,14 @@ In-memory users created at startup:
 
 ## Manual API walkthrough
 
-### 1. Login and get a token
+### 1. Register or login and get a token
 
 ```powershell
+# Self-service registration (returns tokens immediately; password needs 8+ chars with a letter and a digit)
+$newUser = Invoke-RestMethod -Method Post -Uri http://localhost:8081/api/auth/register `
+  -ContentType "application/json" -Body '{"username":"alice","email":"alice@example.com","password":"s3cret-pass"}'
+
+# Or login with an existing account
 $login = Invoke-RestMethod -Method Post -Uri http://localhost:8081/api/auth/login `
   -ContentType "application/json" -Body '{"username":"customer","password":"customer"}'
 $token = $login.accessToken
@@ -90,7 +100,7 @@ Invoke-RestMethod http://localhost:8081/api/auth/me -Headers @{Authorization="Be
 # -> userId, username, email, roles = ["ROLE_CUSTOMER"]
 ```
 
-Bad credentials return HTTP 401 with the standard error body.
+Bad credentials return HTTP 401; duplicate username/email returns 409; weak passwords return 400.
 
 ### 2. Create products (admin) and browse (anyone)
 
@@ -156,7 +166,36 @@ Invoke-RestMethod "http://localhost:8081/api/orders/$($order.id)" -Headers @{Aut
 Admins may pass any `customerId` to `GET /api/orders` and use the notify endpoints:
 `POST /api/orders/{id}/notify-user/{username}` (ADMIN-only) pushes a message to that user's `/user/queue/orders` STOMP queue.
 
-### 5. Real-time updates (STOMP)
+### 5. Warehouse fulfillment (as warehouse or admin)
+
+After payment, warehouse staff move the order through the fulfillment pipeline:
+
+```powershell
+$wh = (Invoke-RestMethod -Method Post -Uri http://localhost:8081/api/auth/login `
+  -ContentType "application/json" -Body '{"username":"warehouse","password":"warehouse"}').accessToken
+
+Invoke-RestMethod -Method Post -Uri "http://localhost:8081/api/orders/$($order.id)/ship" `
+  -Headers @{Authorization="Bearer $wh"}     # -> status SHIPPED (409 if not PAID)
+
+Invoke-RestMethod -Method Post -Uri "http://localhost:8081/api/orders/$($order.id)/deliver" `
+  -Headers @{Authorization="Bearer $wh"}     # -> status DELIVERED
+```
+
+Customers attempting these endpoints receive `403`. Each transition is pushed over WebSocket.
+
+### 6. Audit history and reserved stock (admin/warehouse)
+
+```powershell
+# Full revision history of an order (ADD/MOD entries with author, timestamp, status snapshot) - admin only
+$admin = (Invoke-RestMethod -Method Post -Uri http://localhost:8081/api/auth/login `
+  -ContentType "application/json" -Body '{"username":"admin","password":"admin"}').accessToken
+Invoke-RestMethod "http://localhost:8081/api/admin/audit/orders/$($order.id)" -Headers @{Authorization="Bearer $admin"}
+
+# Per-product reserved vs available stock - warehouse/admin
+Invoke-RestMethod "http://localhost:8081/api/inventory/reserved" -Headers @{Authorization="Bearer $wh"}
+```
+
+### 7. Real-time updates (STOMP)
 
 **When to use WebSocket instead of plain REST calls:**
 
@@ -169,7 +208,7 @@ Admins may pass any `customerId` to `GET /api/orders` and use the notify endpoin
 
 Rule of thumb: REST for request/response, WebSocket when the *server* needs to push something the client didn't ask for at that moment.
 
-**Message format:** JSON `{ "orderId": "...", "status": "..." }`
+**Message format:** JSON `{ "orderId": "...", "status": "..." }` — pushed on payment, ship, deliver, reservation expiry (`RESERVATION_EXPIRED`), and payment failure (`PAYMENT_FAILED` with a `reason` field).
 **Destinations:** `/user/queue/orders` (private, per user), `/topic/orders` (broadcast).
 **Auth:** the STOMP `CONNECT` frame must carry `Authorization: Bearer <accessToken>`.
 
@@ -294,7 +333,7 @@ Notes:
 
 ## Run the tests
 
-Full suite (45 tests, uses H2 automatically):
+Full suite (72 tests, uses H2 automatically):
 
 ```bash
 mvn test
@@ -313,22 +352,27 @@ Key properties (see `src/main/resources/application.yml` and `.env.example`):
 | Property | Default | Purpose |
 |---|---|---|
 | `DB_URL` / `DB_USERNAME` / `DB_PASSWORD` | `jdbc:postgresql://localhost:5432/inventory_db` / `inventory` / `inventory` | Database connection |
-| `JWT_SECRET` | `change-me-please` | HS256 signing secret (set a real secret in production) |
+| `JWT_SECRET` | `change-me-please` | HS256 signing secret. **Startup fails under prod/production profiles if unset or left at the default** |
 | `jwt.use-rs256` | `false` | Switch to RS256 with PEM keys (`docs/frontend-req/rs256.md`) |
 | `cors.allowed-origins` | comma-separated list | Allowed browser origins |
 | `jwt.access-token-expiration-seconds` / `jwt.refresh-token-expiration-seconds` | `900` / `604800` | Token lifetimes |
+| `security.login.max-attempts` / `security.login.window-seconds` | `5` / `60` | Login lockout threshold and window (per username) |
 
 ## Project structure
 
 - `src/main/java/com/example/inventory/domain` — domain entities, value objects, repository interfaces
-- `src/main/java/com/example/inventory/application` — commands, queries, handlers (use cases)
-- `src/main/java/com/example/inventory/infrastructure` — JPA persistence, security (JWT), WebSocket
+- `src/main/java/com/example/inventory/application` — commands, queries, handlers (use cases), ports (e.g., `PaymentFailureNotifier`)
+- `src/main/java/com/example/inventory/infrastructure` — JPA persistence with Envers auditing, security (JWT, rate limiting, secret guard), WebSocket, scheduled jobs
 - `src/main/java/com/example/inventory/web` — REST controllers, DTOs, exception handling
-- `src/test/java` — unit and integration tests
+- `src/test/java` — unit and integration tests (72 tests)
+- `docs/prd-compliance-gap-report.md` — PRD compliance status; all identified gaps are resolved
+- `docs/development-pitfalls.md` — build/testing gotchas and project conventions; read before extending the codebase
 - `docs/frontend-req/` — frontend requirements contract and preparation plan
 
 ## Notes
 
 - The `dev` profile auto-creates/updates the database schema (`ddl-auto: update`).
 - Error responses always follow the same JSON shape so clients can centralize handling.
-- For production: set a strong `JWT_SECRET` (or enable RS256), restrict `cors.allowed-origins`, and replace the in-memory user registry with a persistent one.
+- For production: set a strong `JWT_SECRET` (the app refuses to start without one under prod profiles, or enable RS256), restrict `cors.allowed-origins`, and use PostgreSQL rather than H2.
+- Login attempts are rate-limited per username: after 5 failures within 60s (configurable), even correct passwords return `429` until the window expires.
+- Product and order changes are audited via Hibernate Envers (`revinfo`, `*_aud` tables); expose history through `/api/admin/audit/*`.
