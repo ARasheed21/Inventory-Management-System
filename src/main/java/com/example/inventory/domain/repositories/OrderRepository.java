@@ -15,7 +15,7 @@ public interface OrderRepository {
 
     List<Order> findAll();
 
-    int cancelExpiredPendingOrders(Instant now);
+    List<Order> cancelExpiredPendingOrders(Instant now);
 
     void delete(String id);
 }

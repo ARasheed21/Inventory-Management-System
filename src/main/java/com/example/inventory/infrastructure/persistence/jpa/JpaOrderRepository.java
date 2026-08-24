@@ -71,15 +71,18 @@ public class JpaOrderRepository implements OrderRepository {
 
     @Override
     @Transactional
-    public int cancelExpiredPendingOrders(Instant now) {
-        return entityManager.createQuery(
-                "UPDATE OrderJpaEntity o SET o.status = :cancelledStatus, o.updatedAt = :updatedAt "
-                        + "WHERE o.status = :pendingStatus AND o.reservedUntil < :now")
-                .setParameter("cancelledStatus", com.example.inventory.domain.valueobjects.OrderStatus.CANCELLED.name())
+    public List<Order> cancelExpiredPendingOrders(Instant now) {
+        List<OrderJpaEntity> expired = entityManager.createQuery(
+                "SELECT o FROM OrderJpaEntity o WHERE o.status = :pendingStatus AND o.reservedUntil < :now",
+                OrderJpaEntity.class)
                 .setParameter("pendingStatus", com.example.inventory.domain.valueobjects.OrderStatus.PENDING.name())
-                .setParameter("updatedAt", now)
                 .setParameter("now", now)
-                .executeUpdate();
+                .getResultList();
+        for (OrderJpaEntity entity : expired) {
+            entity.setStatus(com.example.inventory.domain.valueobjects.OrderStatus.CANCELLED.name());
+            entity.setUpdatedAt(now);
+        }
+        return expired.stream().map(orderJpaMapper::toDomain).toList();
     }
 
     @Override

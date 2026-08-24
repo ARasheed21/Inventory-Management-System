@@ -19,5 +19,8 @@ public record OrderResponse(
 
         @Schema(description = "Order creation timestamp") Instant createdAt,
 
-        @Schema(description = "Reservation expiry timestamp") Instant reservedUntil) {
+        @Schema(description = "Reservation expiry timestamp") Instant reservedUntil,
+
+        @Schema(description = "Server-computed seconds left before the reservation expires (0 when not pending)")
+        long reservationSecondsRemaining) {
 }

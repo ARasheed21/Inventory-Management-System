@@ -118,13 +118,17 @@ public class OrderController {
     @GetMapping("/orders/status/{orderId}")
     @Operation(summary = "Get order status", description = "Returns the current status of an order.")
     @ApiResponse(responseCode = "200", description = "Order status returned")
-    public ResponseEntity<Map<String, String>> getOrderStatus(
+    public ResponseEntity<Map<String, Object>> getOrderStatus(
             @Parameter(description = "Unique order identifier") @PathVariable("orderId") String orderId,
             Authentication authentication) {
         com.example.inventory.web.dto.OrderResponse orderResponse = orderMapper.toWebResponse(
                 getOrderQueryHandler.handle(new GetOrderQuery(orderId)));
         assertOwnership(orderResponse, authentication);
-        return ResponseEntity.ok(Map.of("orderId", orderId, "status", orderResponse.status()));
+        Map<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("orderId", orderId);
+        payload.put("status", orderResponse.status());
+        payload.put("reservationSecondsRemaining", orderResponse.reservationSecondsRemaining());
+        return ResponseEntity.ok(payload);
     }
 
     @PostMapping("/orders/{id}/payment")

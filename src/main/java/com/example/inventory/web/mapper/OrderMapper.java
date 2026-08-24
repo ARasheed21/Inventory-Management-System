@@ -26,6 +26,15 @@ public class OrderMapper {
                 response.totalAmount(),
                 response.currency(),
                 response.createdAt(),
-                response.reservedUntil());
+                response.reservedUntil(),
+                reservationSecondsRemaining(response.status(), response.reservedUntil()));
+    }
+
+    private long reservationSecondsRemaining(String status, java.time.Instant reservedUntil) {
+        if (!"PENDING".equals(status) || reservedUntil == null) {
+            return 0;
+        }
+        long seconds = java.time.Duration.between(java.time.Instant.now(), reservedUntil).getSeconds();
+        return Math.max(0, seconds);
     }
 }
