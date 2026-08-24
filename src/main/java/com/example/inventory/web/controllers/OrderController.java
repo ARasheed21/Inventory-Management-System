@@ -28,10 +28,12 @@ import com.example.inventory.application.dto.OrderResponse;
 import com.example.inventory.application.queries.GetOrderQuery;
 import com.example.inventory.application.queries.ListOrdersQuery;
 import com.example.inventory.application.handlers.CancelOrderCommandHandler;
+import com.example.inventory.application.handlers.DeliverOrderCommandHandler;
 import com.example.inventory.application.handlers.GetOrderQueryHandler;
 import com.example.inventory.application.handlers.ListOrdersQueryHandler;
 import com.example.inventory.application.handlers.PlaceOrderCommandHandler;
 import com.example.inventory.application.handlers.ProcessPaymentCommandHandler;
+import com.example.inventory.application.handlers.ShipOrderCommandHandler;
 import com.example.inventory.web.dto.CreateOrderRequest;
 import com.example.inventory.web.mapper.OrderMapper;
 
@@ -46,6 +48,8 @@ public class OrderController {
     private final ListOrdersQueryHandler listOrdersQueryHandler;
     private final ProcessPaymentCommandHandler processPaymentCommandHandler;
     private final CancelOrderCommandHandler cancelOrderCommandHandler;
+    private final ShipOrderCommandHandler shipOrderCommandHandler;
+    private final DeliverOrderCommandHandler deliverOrderCommandHandler;
     private final OrderMapper orderMapper;
     private final com.example.inventory.infrastructure.websocket.OrderWebSocketService orderWebSocketService;
 
@@ -54,6 +58,8 @@ public class OrderController {
             ListOrdersQueryHandler listOrdersQueryHandler,
             ProcessPaymentCommandHandler processPaymentCommandHandler,
             CancelOrderCommandHandler cancelOrderCommandHandler,
+            ShipOrderCommandHandler shipOrderCommandHandler,
+            DeliverOrderCommandHandler deliverOrderCommandHandler,
             OrderMapper orderMapper,
             com.example.inventory.infrastructure.websocket.OrderWebSocketService orderWebSocketService) {
         this.placeOrderCommandHandler = placeOrderCommandHandler;
@@ -61,6 +67,8 @@ public class OrderController {
         this.listOrdersQueryHandler = listOrdersQueryHandler;
         this.processPaymentCommandHandler = processPaymentCommandHandler;
         this.cancelOrderCommandHandler = cancelOrderCommandHandler;
+        this.shipOrderCommandHandler = shipOrderCommandHandler;
+        this.deliverOrderCommandHandler = deliverOrderCommandHandler;
         this.orderMapper = orderMapper;
         this.orderWebSocketService = orderWebSocketService;
     }
@@ -153,6 +161,30 @@ public class OrderController {
     public ResponseEntity<Void> notifyUser(@PathVariable("id") String id, @PathVariable("username") String username) {
         orderWebSocketService.publishToUser(username, Map.of("orderId", id, "status", "USER_UPDATE"));
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/orders/{id}/ship")
+    @PreAuthorize("hasAnyRole('WAREHOUSE', 'ADMIN')")
+    @Operation(summary = "Ship a paid order", description = "Transitions a paid order to the shipped state.")
+    @ApiResponse(responseCode = "200", description = "Order shipped")
+    public ResponseEntity<com.example.inventory.web.dto.OrderResponse> shipOrder(
+            @Parameter(description = "Unique order identifier") @PathVariable("id") String id) {
+        OrderResponse orderResponse = shipOrderCommandHandler.handle(
+                new com.example.inventory.application.commands.ShipOrderCommand(id));
+        orderWebSocketService.publishOrderUpdate(id, Map.of("orderId", id, "status", orderResponse.status()));
+        return ResponseEntity.ok(orderMapper.toWebResponse(orderResponse));
+    }
+
+    @PostMapping("/orders/{id}/deliver")
+    @PreAuthorize("hasAnyRole('WAREHOUSE', 'ADMIN')")
+    @Operation(summary = "Deliver a shipped order", description = "Transitions a shipped order to the delivered state.")
+    @ApiResponse(responseCode = "200", description = "Order delivered")
+    public ResponseEntity<com.example.inventory.web.dto.OrderResponse> deliverOrder(
+            @Parameter(description = "Unique order identifier") @PathVariable("id") String id) {
+        OrderResponse orderResponse = deliverOrderCommandHandler.handle(
+                new com.example.inventory.application.commands.DeliverOrderCommand(id));
+        orderWebSocketService.publishOrderUpdate(id, Map.of("orderId", id, "status", orderResponse.status()));
+        return ResponseEntity.ok(orderMapper.toWebResponse(orderResponse));
     }
 
     private boolean isAdmin(Authentication authentication) {

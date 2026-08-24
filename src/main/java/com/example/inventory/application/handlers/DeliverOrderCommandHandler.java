@@ -1,5 +1,6 @@
 package com.example.inventory.application.handlers;
 
+import com.example.inventory.application.ResourceNotFoundException;
 import com.example.inventory.application.commands.DeliverOrderCommand;
 import com.example.inventory.application.dto.OrderResponse;
 import com.example.inventory.domain.entities.Order;
@@ -16,7 +17,7 @@ public class DeliverOrderCommandHandler {
 
     public OrderResponse handle(DeliverOrderCommand command) {
         Order order = orderRepository.findById(command.orderId())
-                .orElseThrow(() -> new IllegalArgumentException("Order not found: " + command.orderId()));
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found: " + command.orderId()));
         order.deliver();
         orderRepository.save(order);
         return new OrderResponse(order.getId(), order.getCustomerId(), order.getStatus().name(),

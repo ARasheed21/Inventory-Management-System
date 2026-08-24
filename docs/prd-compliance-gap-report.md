@@ -7,7 +7,7 @@ This report compares the PRD user stories and contract expectations in [docs/prd
 
 ## Verification Evidence
 The current repository was re-verified with Maven test evidence from the latest run:
-- `mvn test` -> `Tests run: 50, Failures: 0, Errors: 0, Skipped: 0`
+- `mvn test` -> `Tests run: 54, Failures: 0, Errors: 0, Skipped: 0`
 - `BUILD SUCCESS`
 
 That result is consistent with the current controller, domain, persistence, security, registration, and benchmark proof points.
@@ -84,16 +84,15 @@ Task backlog:
 2. Introduce a notification channel abstraction (the WebSocket service is a candidate transport).
 3. Add test coverage for failed-payment messaging and order state.
 
-#### Gap 6. Order status update / warehouse fulfillment API — NOT IMPLEMENTED
+#### Gap 6. Order status update / warehouse fulfillment API — RESOLVED
 PRD stories: 17, 18, 19, 31
 
-Evidence:
-- Domain and handlers support ship/deliver ([ShipOrderCommandHandler.java](../src/main/java/com/example/inventory/application/handlers/ShipOrderCommandHandler.java), [DeliverOrderCommandHandler.java](../src/main/java/com/example/inventory/application/handlers/DeliverOrderCommandHandler.java)), but no controller endpoint exposes them.
-- Only a read-only `GET /api/orders/status/{orderId}` exists in [OrderController.java](../src/main/java/com/example/inventory/web/controllers/OrderController.java); there is no `PUT /api/orders/{orderId}/status`.
-
-Task backlog:
-1. Expose explicit ship/deliver endpoints or a unified status-update contract with warehouse/admin role checks.
-2. Add controller and security tests for warehouse-role access.
+Resolution evidence:
+- `POST /api/orders/{id}/ship` and `POST /api/orders/{id}/deliver` are now exposed in [OrderController.java](../src/main/java/com/example/inventory/web/controllers/OrderController.java), wired to the existing [ShipOrderCommandHandler](../src/main/java/com/example/inventory/application/handlers/ShipOrderCommandHandler.java) and [DeliverOrderCommandHandler](../src/main/java/com/example/inventory/application/handlers/DeliverOrderCommandHandler.java).
+- Both endpoints require WAREHOUSE or ADMIN roles (`@PreAuthorize`); customers receive `403`, anonymous callers `401`.
+- Invalid lifecycle transitions return `409 Conflict`; unknown order ids return `404`.
+- Each transition publishes an order update over WebSocket so connected frontends observe SHIPPED/DELIVERED in real time.
+- All behaviors verified by [FulfillmentApiIntegrationTest.java](../src/test/java/com/example/inventory/web/FulfillmentApiIntegrationTest.java) (ship->deliver lifecycle, role enforcement, invalid transitions, unknown order).
 
 #### Gap 7. Audit-history read API — NOT IMPLEMENTED
 PRD stories: 20, 21
@@ -127,11 +126,10 @@ Task backlog:
 2. Add admin read APIs for stock-change history.
 
 ## Bottom Line
-The repository now satisfies the PRD's core customer-facing catalog, cart, admin inventory write, and persistent account/registration flows, with a green 50-test suite. The system still lacks the warehouse fulfillment API, payment-failure notifications, audit-history endpoints, reserved-inventory reporting, and true Keycloak integration.
+The repository now satisfies the PRD's core customer-facing catalog, cart, admin inventory write, persistent account/registration, and warehouse fulfillment flows, with a green 54-test suite. The system still lacks payment-failure notifications, audit-history endpoints, reserved-inventory reporting, and true Keycloak integration.
 
 ## Recommended delivery order
-1. Expose ship/deliver endpoints (Gap 6) — pure wiring of existing handlers, unblocks post-purchase UX.
-2. Enforce non-default JWT secret in prod + optional config-gated Keycloak issuer validation (Gap 8 remainder).
-3. Wire payment-failure events to the existing WebSocket channel (Gap 5) and add a reservation-expiry countdown payload (Gap 4).
-4. Add Product @Audited plus audit-history read endpoints (Gaps 7, 10).
-5. Add reserved-inventory reporting (Gap 9).
+1. Enforce non-default JWT secret in prod + optional config-gated Keycloak issuer validation (Gap 8 remainder).
+2. Wire payment-failure events to the existing WebSocket channel (Gap 5) and add a reservation-expiry countdown payload (Gap 4).
+3. Add Product @Audited plus audit-history read endpoints (Gaps 7, 10).
+4. Add reserved-inventory reporting (Gap 9).
