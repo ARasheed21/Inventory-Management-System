@@ -10,7 +10,10 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 
+import org.hibernate.envers.Audited;
+
 @Entity
+@Audited
 @Table(name = "products")
 public class ProductJpaEntity {
 

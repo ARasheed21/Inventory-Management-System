@@ -7,7 +7,7 @@ This report compares the PRD user stories and contract expectations in [docs/prd
 
 ## Verification Evidence
 The current repository was re-verified with Maven test evidence from the latest run:
-- `mvn test` -> `Tests run: 61, Failures: 0, Errors: 0, Skipped: 0`
+- `mvn test` -> `Tests run: 66, Failures: 0, Errors: 0, Skipped: 0`
 - `BUILD SUCCESS`
 
 That result is consistent with the current controller, domain, persistence, security, registration, and benchmark proof points.
@@ -77,8 +77,6 @@ Resolution evidence:
 - Each transition publishes an order update over WebSocket so connected frontends observe SHIPPED/DELIVERED in real time.
 - All behaviors verified by [FulfillmentApiIntegrationTest.java](../src/test/java/com/example/inventory/web/FulfillmentApiIntegrationTest.java) (ship->deliver lifecycle, role enforcement, invalid transitions, unknown order).
 
-### Still missing
-
 #### Gap 5. Payment failure notification — RESOLVED
 PRD story: 12
 
@@ -89,41 +87,41 @@ Resolution evidence:
 - Unknown-order payment attempts return `404` (aligned with ship/deliver handlers).
 - All behaviors verified by [PaymentFailureNotificationIntegrationTest.java](../src/test/java/com/example/inventory/web/PaymentFailureNotificationIntegrationTest.java) (expired-order push + 409, no false notification on successful payment, unknown order 404).
 
-#### Gap 7. Audit-history read API — NOT IMPLEMENTED
+#### Gap 7. Audit-history read API — RESOLVED
 PRD stories: 20, 21
 
-Evidence:
-- Envers change tracking persists behind the scenes (@Audited on Order entities), but there is no web endpoint or read service returning revision history.
+Resolution evidence:
+- New admin-only endpoints `GET /api/admin/audit/products/{id}` and `GET /api/admin/audit/orders/{id}` in [AuditHistoryController.java](../src/main/java/com/example/inventory/web/AuditHistoryController.java) return Envers revision lists (`{revision, timestamp, author, revisionType, snapshot}`) resolved by external ids.
+- Customers and warehouse users receive `403`; only ADMIN can read history.
+- Verified by [AuditHistoryIntegrationTest.java](../src/test/java/com/example/inventory/web/AuditHistoryIntegrationTest.java): product history shows ADD then MOD after an update; order history tracks PENDING -> PAID -> SHIPPED snapshots.
 
-Task backlog:
-1. Add a query/read model for audit revisions.
-2. Add an admin-only controller endpoint for order/product change history.
-
-#### Gap 9. Reserved inventory visibility — NOT IMPLEMENTED
-PRD story: 29
-
-Evidence:
-- Reservation timeout logic works, but no query/report path returns currently-reserved inventory by pending order allocation.
-
-Task backlog:
-1. Add a reserved-inventory projection query and reporting endpoint.
-2. Add tests for available vs reserved counts.
-
-#### Gap 10. Inventory adjustment auditing — NOT IMPLEMENTED
+#### Gap 10. Inventory adjustment auditing — RESOLVED
 PRD stories: 33
 
-Evidence:
-- [ProductJpaEntity.java](../src/main/java/com/example/inventory/infrastructure/persistence/jpa/ProductJpaEntity.java) has no `@Audited` annotation; only Order entities are audited.
-- Admin inventory writes (now implemented per Gap 1) therefore have no audit trail.
+Resolution evidence:
+- [ProductJpaEntity.java](../src/main/java/com/example/inventory/infrastructure/persistence/jpa/ProductJpaEntity.java) is now `@Audited`, so admin product/stock writes produce a full Envers revision trail alongside order auditing.
+- `products_aud` table added to both H2 schemas.
+- The audit trail is observable end-to-end through the Gap 7 read endpoint (product create + update yields ADD/MOD revisions), verified by the same integration test.
 
-Task backlog:
-1. Make Product auditable through the same Envers pattern.
-2. Add admin read APIs for stock-change history.
+#### Gap 9. Reserved inventory visibility — RESOLVED
+PRD story: 29
+
+Resolution evidence:
+- New WAREHOUSE/ADMIN endpoint `GET /api/inventory/reserved` returns per-product `{productId, name, quantityInStock, quantityReserved, quantityAvailable}`, where reserved quantities are aggregated from PENDING orders ([GetReservedInventoryQueryHandler.java](../src/main/java/com/example/inventory/application/handlers/GetReservedInventoryQueryHandler.java), [OrderRepository.findReservedQuantitiesByProduct](../src/main/java/com/example/inventory/domain/repositories/OrderRepository.java)).
+- Reserved amounts drop as soon as an order leaves PENDING (paid/cancelled/expired).
+- Verified by [ReservedInventoryIntegrationTest.java](../src/test/java/com/example/inventory/web/ReservedInventoryIntegrationTest.java) (reserved=3/available=7 for a seeded pending order, drop to 0 after payment, role enforcement).
+
+### Still missing
+
+#### Gap 8 remainder — Keycloak / production JWT hardening
+PRD stories: 23, 24, 25 (partial)
+
+Evidence:
+1. Keycloak issuer validation is not configured; tokens are self-issued HS256/RS256 JWTs.
+2. Production profile should enforce a non-default `jwt.secret` (default `change-me-please` remains forgeable if deployed unset).
 
 ## Bottom Line
-The repository now satisfies the PRD's core customer-facing catalog, cart, admin inventory write, persistent account/registration, warehouse fulfillment, reservation countdown/notification, and payment-failure notification flows, with a green 61-test suite. The system still lacks audit-history endpoints, reserved-inventory reporting, and true Keycloak integration.
+The repository now satisfies the PRD's core customer-facing catalog, cart, admin inventory write, persistent account/registration, warehouse fulfillment, reservation countdown/notification, payment-failure notification, audit trail/history, and reserved-inventory reporting flows, with a green 66-test suite. The only remaining PRD item is the true Keycloak integration and production JWT secret hardening (Gap 8 remainder).
 
 ## Recommended delivery order
 1. Enforce non-default JWT secret in prod + optional config-gated Keycloak issuer validation (Gap 8 remainder).
-2. Add Product @Audited plus audit-history read endpoints (Gaps 7, 10).
-3. Add reserved-inventory reporting (Gap 9).

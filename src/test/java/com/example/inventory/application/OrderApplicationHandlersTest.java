@@ -152,6 +152,18 @@ class OrderApplicationHandlersTest {
         }
 
         @Override
+        public java.util.Map<String, Integer> findReservedQuantitiesByProduct() {
+            java.util.Map<String, Integer> reserved = new java.util.HashMap<>();
+            for (Order order : savedOrders) {
+                if (order.getStatus() == OrderStatus.PENDING) {
+                    order.getItems().forEach(item -> reserved.merge(item.productId(), item.quantity(),
+                            Integer::sum));
+                }
+            }
+            return reserved;
+        }
+
+        @Override
         public void delete(String id) {
             savedOrders.removeIf(order -> order.getId().equals(id));
         }

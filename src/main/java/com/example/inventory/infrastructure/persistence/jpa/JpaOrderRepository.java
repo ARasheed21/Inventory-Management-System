@@ -86,6 +86,21 @@ public class JpaOrderRepository implements OrderRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public java.util.Map<String, Integer> findReservedQuantitiesByProduct() {
+        List<Object[]> rows = entityManager.createQuery(
+                "SELECT i.productId, SUM(i.quantity) FROM OrderJpaEntity o JOIN o.items i "
+                        + "WHERE o.status = :pendingStatus GROUP BY i.productId", Object[].class)
+                .setParameter("pendingStatus", com.example.inventory.domain.valueobjects.OrderStatus.PENDING.name())
+                .getResultList();
+        java.util.Map<String, Integer> reserved = new java.util.HashMap<>();
+        for (Object[] row : rows) {
+            reserved.put((String) row[0], ((Number) row[1]).intValue());
+        }
+        return reserved;
+    }
+
+    @Override
     @Transactional
     public void delete(String id) {
         orderJpaEntityRepository.findByExternalId(id).ifPresent(orderJpaEntityRepository::delete);

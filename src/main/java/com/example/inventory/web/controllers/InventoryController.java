@@ -45,6 +45,7 @@ public class InventoryController {
     private final CreateProductCommandHandler createProductCommandHandler;
     private final UpdateProductCommandHandler updateProductCommandHandler;
     private final ListProductsQueryHandler listProductsQueryHandler;
+    private final com.example.inventory.application.handlers.GetReservedInventoryQueryHandler getReservedInventoryQueryHandler;
     private final ProductMapper productMapper;
 
     public InventoryController(GetProductQueryHandler getProductQueryHandler,
@@ -52,13 +53,23 @@ public class InventoryController {
             CreateProductCommandHandler createProductCommandHandler,
             UpdateProductCommandHandler updateProductCommandHandler,
             ListProductsQueryHandler listProductsQueryHandler,
+            com.example.inventory.application.handlers.GetReservedInventoryQueryHandler getReservedInventoryQueryHandler,
             ProductMapper productMapper) {
         this.getProductQueryHandler = getProductQueryHandler;
         this.getInventoryQueryHandler = getInventoryQueryHandler;
         this.createProductCommandHandler = createProductCommandHandler;
         this.updateProductCommandHandler = updateProductCommandHandler;
         this.listProductsQueryHandler = listProductsQueryHandler;
+        this.getReservedInventoryQueryHandler = getReservedInventoryQueryHandler;
         this.productMapper = productMapper;
+    }
+
+    @GetMapping("/inventory/reserved")
+    @PreAuthorize("hasAnyRole('WAREHOUSE', 'ADMIN')")
+    @Operation(summary = "Reserved inventory report", description = "Returns per-product stock with quantities reserved by pending orders.")
+    @ApiResponse(responseCode = "200", description = "Reserved inventory returned")
+    public ResponseEntity<List<com.example.inventory.application.dto.ReservedInventoryItem>> getReservedInventory() {
+        return ResponseEntity.ok(getReservedInventoryQueryHandler.handle());
     }
 
     @GetMapping("/inventory")

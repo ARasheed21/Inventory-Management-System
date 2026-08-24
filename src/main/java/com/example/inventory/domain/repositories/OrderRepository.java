@@ -17,5 +17,7 @@ public interface OrderRepository {
 
     List<Order> cancelExpiredPendingOrders(Instant now);
 
+    java.util.Map<String, Integer> findReservedQuantitiesByProduct();
+
     void delete(String id);
 }
