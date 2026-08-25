@@ -1,5 +1,6 @@
 package com.example.inventory.infrastructure.audit;
 
+import com.example.inventory.infrastructure.persistence.jpa.AuditRevisionEntity;
 import org.hibernate.envers.RevisionListener;
 
 public class AuditRevisionListener implements RevisionListener {

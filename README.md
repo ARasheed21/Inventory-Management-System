@@ -368,6 +368,7 @@ Key properties (see `src/main/resources/application.yml` and `.env.example`):
 - `docs/prd-compliance-gap-report.md` — PRD compliance status; all identified gaps are resolved
 - `docs/api-contract/openapi.yaml` — committed OpenAPI 3 contract (regenerate via `mvn test -Dtest=OpenApiContractExportTest` after any API change); drive frontend clients from this file
 - `docs/api-contract/asyncapi-ws.md` — WebSocket/STOMP contract: destinations, auth, and push payload shapes
+- `AGENTS.md` — binding rules for AI agents/humans implementing features here (workflow, architecture, contract-first, testing conventions)
 - `docs/development-pitfalls.md` — build/testing gotchas and project conventions; read before extending the codebase
 - `docs/frontend-req/` — frontend requirements contract and preparation plan
 

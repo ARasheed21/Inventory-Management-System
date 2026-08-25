@@ -1,4 +1,4 @@
-package com.example.inventory.infrastructure.audit;
+package com.example.inventory.infrastructure.persistence.jpa;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -10,6 +10,8 @@ import jakarta.persistence.Table;
 import org.hibernate.envers.RevisionEntity;
 import org.hibernate.envers.RevisionNumber;
 import org.hibernate.envers.RevisionTimestamp;
+
+import com.example.inventory.infrastructure.audit.AuditRevisionListener;
 
 @Entity
 @Table(name = "revinfo")

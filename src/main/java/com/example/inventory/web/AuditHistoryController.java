@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.inventory.application.ResourceNotFoundException;
-import com.example.inventory.infrastructure.audit.AuditRevisionEntity;
+import com.example.inventory.infrastructure.persistence.jpa.AuditRevisionEntity;
 import com.example.inventory.infrastructure.persistence.jpa.OrderJpaEntity;
 import com.example.inventory.infrastructure.persistence.jpa.OrderJpaEntityRepository;
 import com.example.inventory.infrastructure.persistence.jpa.ProductJpaEntity;
