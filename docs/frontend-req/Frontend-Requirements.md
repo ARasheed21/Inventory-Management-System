@@ -6,16 +6,16 @@ Here is a dedicated **external dependencies checklist** – everything required 
 
 Your backend must provide the following **fully functional** endpoints and protocols *before* feature development starts. Provide the development and production URLs.
 
-| # | Requirement | Specification / Contract |
-|---|-------------|---------------------------|
-| **1.1** | **Base URLs** | Provide `API_BASE_URL` (e.g., `https://api.dev.example.com`) and `WS_BASE_URL` (e.g., `wss://api.dev.example.com/ws`). |
-| **1.2** | **REST Endpoints** | <ul><li>`POST /auth/login` – returns JWT + refresh token.</li><li>`POST /auth/refresh` – refreshes expired JWT.</li><li>`GET /auth/me` – returns current user profile.</li><li>`GET /products` – pagination, search, category filters.</li><li>`GET /products/{id}` – product details.</li><li>`GET /cart`, `POST /cart`, `PUT /cart/{id}`, `DELETE /cart/{id}`.</li><li>`POST /orders`, `GET /orders` (history), `GET /orders/{id}`.</li><li>`GET /orders/status/{orderId}` (optional, but WebSocket preferred).</li><li>`PUT /admin/inventory` (web only).</li></ul> |
-| **1.3** | **WebSocket (STOMP)** | <ul><li>Endpoint: `/ws/orders` (or your chosen path).</li><li>Requires JWT in the STOMP `CONNECT` headers.</li><li>Destinations: `/user/queue/orders` (customer), `/topic/orders` (admin).</li><li>Message format: JSON with `orderId` and `status`.</li></ul> |
-| **1.4** | **JWT Specification** | <ul><li>Algorithm: RS256 (preferred) or HS256. If RS256, provide the **public key** (for client-side expiry validation, though optional).</li><li>Header format: `Authorization: Bearer <token>`.</li><li>Token payload must contain `userId`, `email`, and `roles` (e.g., `ROLE_ADMIN`).</li><li>Refresh token mechanism: either a long-lived JWT or a separate opaque token via `/auth/refresh`.</li></ul> |
-| **1.5** | **Error Response Format** | Standardised JSON structure so Dio interceptors can parse failures, e.g.: <br> `{ "timestamp": "...", "status": 401, "message": "Token expired", "path": "/cart" }` |
-| **1.6** | **CORS Configuration** | Must allow the web dashboard origin (e.g., `https://dashboard.dev.example.com`). Allow credentials (`true`), methods: GET, POST, PUT, DELETE, OPTIONS. |
-| **1.7** | **SSL/TLS Certificate** | Provide the **public key SHA-256 hashes** for certificate pinning (see Section 2). Must have valid certificates in production (Let’s Encrypt or paid). |
-| **1.8** | **Postman / OpenAPI Spec** | Provide an OpenAPI (Swagger) spec or Postman collection for the mobile/web developers to test against. |
+| # | Requirement | Specification / Contract | Status |
+|---|-------------|---------------------------|--------|
+| **1.1** | **Base URLs** | Local: `http://localhost:8080/api` and `ws://localhost:8080/api/ws`. Production URLs pending deployment (see deployment guide). Context path `/api` is part of every URL. | ⏳ prod pending |
+| **1.2** | **REST Endpoints** | Authoritative source: [`docs/api-contract/openapi.yaml`](api-contract/openapi.yaml). Summary:<ul><li>`POST /auth/register`, `POST /auth/login`, `POST /auth/refresh`, `GET /auth/me`.</li><li>`GET /products`, `GET /products/{id}` (pagination, search, category).</li><li>`GET /cart`, `POST /cart`, `PUT /cart/{itemId}`, `DELETE /cart/{itemId}`.</li><li>`POST /orders`, `GET /orders` (history; admin may filter by customer/status), `GET /orders/{id}`, `GET /orders/status/{orderId}`.</li><li>`POST /orders/{id}/payment`, `POST /orders/{id}/cancel`.</li><li>`POST /orders/{id}/ship`, `POST /orders/{id}/deliver` (WAREHOUSE/ADMIN).</li><li>`GET /fulfillment/orders?status=` (WAREHOUSE/ADMIN fulfillment queue).</li><li>`POST /inventory/products`, `PUT /inventory/products/{id}` (ADMIN catalog management).</li><li>`GET /admin/audit/products/{id}`, `GET /admin/audit/orders/{id}` (ADMIN revision history).</li><li>`GET /inventory/reserved` (WAREHOUSE/ADMIN stock-vs-reserved report).</li></ul> | ✅ ready |
+| **1.3** | **WebSocket (STOMP)** | Endpoint: `/api/ws` (SockJS). JWT required as raw `Authorization: Bearer` header on the STOMP CONNECT frame. Destinations: `/user/queue/orders` (private per user), `/topic/orders/{orderId}` (broadcast). Payloads: `{orderId, status}` plus `RESERVATION_EXPIRED` and `PAYMENT_FAILED {reason}` events. Full contract: [`asyncapi-ws.md`](api-contract/asyncapi-ws.md). | ✅ ready |
+| **1.4** | **JWT Specification** | Algorithm: HS256 default (RS256 optional via `jwt.use-rs256`). Header format: `Authorization: Bearer <token>`. Access-token payload contains `userId`, `email`, and `ROLE_`-prefixed `roles`. Refresh: exchange refresh token at `POST /auth/refresh` for a new pair. Access token lifetime: 900s by default. | ✅ ready |
+| **1.5** | **Error Response Format** | Every non-2xx returns `{timestamp, status, error, message, path}` (`ApiError` schema in the OpenAPI document). | ✅ ready |
+| **1.6** | **CORS Configuration** | Controlled by `cors.allowed-origins` (comma-separated). Add the dashboard origin when deploying. | ✅ ready |
+| **1.7** | **SSL/TLS Certificate** | Requires a deployed server behind TLS (Caddy/nginx). Pinning hashes extracted after the certificate exists. | ⏳ prod pending |
+| **1.8** | **OpenAPI Spec** | Committed at [`docs/api-contract/openapi.yaml`](api-contract/openapi.yaml) — regenerate with `mvn test -Dtest=OpenApiContractExportTest`. Interactive docs at `/api/swagger-ui.html` (includes Bearer authorize). Generate typed clients from this file. | ✅ ready |
 
 ---
 
@@ -96,14 +96,20 @@ Outside the project code, ensure each developer’s machine has the following in
 
 Before writing a single line of feature code (login, product list), confirm these are **done**:
 
-- [ ] Backend is running (dev environment) and Swagger/Postman tests pass for all endpoints.
-- [ ] WebSocket server is accessible and STOMP handshake works with a test token.
-- [ ] SSL certificate hashes are extracted and stored as environment secrets.
-- [ ] `API_BASE_URL` and `WS_BASE_URL` are provided and accessible from the mobile emulator (e.g., `10.0.2.2` for Android) and web browser (CORS handled).
-- [ ] Chosen deployment service (Cloudflare, Vercel, App Center, etc.) is configured with API keys stored in GitHub Secrets.
-- [ ] `flutter_secure_storage` and web `localStorage`/cookies are tested with a dummy token.
-- [ ] The team has access to the backend logs for debugging (e.g., ELK, Datadog, or plain log files).
-- [ ] If using a custom domain, DNS records are pointed to the hosting provider.
+**Backend readiness — ✅ COMPLETE (nothing left to derive):**
+- [x] All endpoints implemented, contracted in `openapi.yaml`, and covered by integration tests.
+- [x] WebSocket STOMP handshake with a real token proven by `WebSocketIntegrationTest` (and the manual Node script in README).
+- [x] Error format, JWT claims, CORS property, and registration flow verified.
+
+**Environment / deployment — ⏳ remaining before production use:**
+- [ ] Backend deployed to a server with TLS; production `API_BASE_URL` / `WS_BASE_URL` obtained.
+- [ ] SSL certificate hashes extracted and stored as environment secrets (requires the deployed cert).
+- [ ] `cors.allowed-origins` on the server set to the dashboard origin.
+- [ ] Chosen hosting/distribution service configured with API keys stored in GitHub Secrets.
+
+**Frontend-side setup tasks:**
+- [ ] Secure token storage (`flutter_secure_storage` mobile / web storage) tested with a dummy token.
+- [ ] Access to backend logs for debugging during development.
 
 ---
 
