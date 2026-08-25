@@ -38,13 +38,18 @@ for a reason. Deeper background lives in `docs/development-pitfalls.md` and
 - Domain state machine lives in `OrderStatus.canTransitionTo`; never bypass it.
 - New write flows = command + handler under `application`; new reads = query + handler.
 - WebSocket pushes go through `OrderWebSocketService`: broadcast `/topic/orders/{id}`,
-  private `/user/queue/orders`. Document new payload shapes in `docs/api-contract/asyncapi-ws.md`.
+  private `/user/queue/orders`. Document new payload shapes in `contracts/ws/asyncapi-ws.md`.
 
 ## 5. API & contract-first rules
 
 - **Any REST change requires regenerating the committed contract**: run
-  `mvn test -Dtest=OpenApiContractExportTest` and commit `docs/api-contract/openapi.yaml`
-  together with the code change.
+  `mvn test -Dtest=OpenApiContractExportTest` — it writes `contracts/api/openapi.yaml` inside
+  the shared `contracts/` git submodule.
+- **Submodule commit ritual** (never skip the pointer bump):
+  1. `cd contracts && git add . && git commit -m "contract: <what>" && git push`
+  2. `cd .. && git add contracts && git commit -m "chore: bump contracts" && git push`
+- Never edit files inside `contracts/` by hand (except `prd/`, which maintainers may update via
+  PR to the shared repo); they are generated or owned by the backend.
 - Annotate every controller with `@Tag`/`@Operation`/`@ApiResponse` and every DTO field with
   `@Schema` (including validation constraints). Undocumented endpoints are a defect.
 - Frontends are driven by the contract, not by reading code. Breaking contract changes must be
@@ -113,7 +118,8 @@ for a reason. Deeper background lives in `docs/development-pitfalls.md` and
 ## 10. Definition of Done
 
 - [ ] Full suite green from a clean build (`mvn clean test`)
-- [ ] `openapi.yaml` regenerated if any API surface changed
+- [ ] `openapi.yaml` regenerated in `contracts/` (submodule committed and pointer bumped) if any
+      API surface changed
 - [ ] New endpoints annotated, authorized, and covered by integration tests through public interfaces
 - [ ] Docs updated per section 9
 - [ ] Commit message follows conventional commits (`feat:`, `fix:`, `chore:`, ...) with a body

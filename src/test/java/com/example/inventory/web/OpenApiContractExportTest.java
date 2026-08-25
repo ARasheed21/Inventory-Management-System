@@ -15,11 +15,13 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * Exports the generated OpenAPI contract to docs/api-contract/openapi.yaml so frontend
- * development can proceed against a committed, reviewable artifact (contract-first).
+ * Exports the generated OpenAPI contract to contracts/api/openapi.yaml - the shared
+ * git-submodule repository consumed by frontend development (contract-first).
  *
- * Run `mvn test -Dtest=OpenApiContractExportTest` after any API change, then review the
- * updated contract file in the same commit as the API change.
+ * Workflow after any API change:
+ *   1. mvn test -Dtest=OpenApiContractExportTest
+ *   2. cd contracts && git add . && git commit -m "contract: ..." && git push
+ *   3. cd .. && git add contracts && git commit -m "chore: bump contracts" && git push
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -37,7 +39,11 @@ class OpenApiContractExportTest {
                 .getResponse()
                 .getContentAsString();
 
-        Path target = Path.of("docs", "api-contract", "openapi.yaml");
+        Path target = Path.of("contracts", "api", "openapi.yaml");
+        if (!Files.exists(target.getParent())) {
+            // submodule not initialized (e.g., shallow CI checkout) - fall back to a local copy
+            target = Path.of("docs", "api-contract", "openapi.yaml");
+        }
         Files.createDirectories(target.getParent());
         Files.writeString(target, yaml);
 
