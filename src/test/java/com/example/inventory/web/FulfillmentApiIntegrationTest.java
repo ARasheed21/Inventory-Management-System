@@ -1,5 +1,7 @@
 package com.example.inventory.web;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -116,6 +118,46 @@ class FulfillmentApiIntegrationTest {
 
         mockMvc.perform(post("/api/orders/{id}/ship", orderId))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @Sql(scripts = "/order-controller-test-data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
+    void adminCanListPaidOrdersAcrossCustomers() throws Exception {
+        String adminToken = TestAuthHelper.obtainAccessToken(mockMvc, objectMapper, "admin", "admin");
+        String orderId = createAndPayOrderAsCustomer();
+
+        String payload = mockMvc.perform(get("/api/orders")
+                .param("status", "PAID")
+                .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        assertTrue(objectMapper.readTree(payload).toString().contains(orderId),
+                "Expected PAID order " + orderId + " in admin listing");
+    }
+
+    @Test
+    @Sql(scripts = "/order-controller-test-data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
+    void warehouseFulfillmentQueueListsCustomerPaidOrdersButBlocksCustomers() throws Exception {
+        String warehouseToken = TestAuthHelper.obtainAccessToken(mockMvc, objectMapper, "warehouse", "warehouse");
+        String customerToken = TestAuthHelper.obtainAccessToken(mockMvc, objectMapper, "customer", "customer");
+        String orderId = createAndPayOrderAsCustomer();
+
+        String payload = mockMvc.perform(get("/api/fulfillment/orders")
+                .param("status", "PAID")
+                .header("Authorization", "Bearer " + warehouseToken))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        assertTrue(objectMapper.readTree(payload).toString().contains(orderId),
+                "Expected PAID order " + orderId + " in the fulfillment queue");
+
+        mockMvc.perform(get("/api/fulfillment/orders")
+                .header("Authorization", "Bearer " + customerToken))
+                .andExpect(status().isForbidden());
     }
 
     @Test

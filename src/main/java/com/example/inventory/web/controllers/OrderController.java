@@ -50,6 +50,7 @@ public class OrderController {
     private final CancelOrderCommandHandler cancelOrderCommandHandler;
     private final ShipOrderCommandHandler shipOrderCommandHandler;
     private final DeliverOrderCommandHandler deliverOrderCommandHandler;
+    private final com.example.inventory.application.handlers.GetFulfillmentQueueQueryHandler fulfillmentQueueQueryHandler;
     private final OrderMapper orderMapper;
     private final com.example.inventory.infrastructure.websocket.OrderWebSocketService orderWebSocketService;
 
@@ -60,6 +61,7 @@ public class OrderController {
             CancelOrderCommandHandler cancelOrderCommandHandler,
             ShipOrderCommandHandler shipOrderCommandHandler,
             DeliverOrderCommandHandler deliverOrderCommandHandler,
+            com.example.inventory.application.handlers.GetFulfillmentQueueQueryHandler fulfillmentQueueQueryHandler,
             OrderMapper orderMapper,
             com.example.inventory.infrastructure.websocket.OrderWebSocketService orderWebSocketService) {
         this.placeOrderCommandHandler = placeOrderCommandHandler;
@@ -69,6 +71,7 @@ public class OrderController {
         this.cancelOrderCommandHandler = cancelOrderCommandHandler;
         this.shipOrderCommandHandler = shipOrderCommandHandler;
         this.deliverOrderCommandHandler = deliverOrderCommandHandler;
+        this.fulfillmentQueueQueryHandler = fulfillmentQueueQueryHandler;
         this.orderMapper = orderMapper;
         this.orderWebSocketService = orderWebSocketService;
     }
@@ -189,6 +192,16 @@ public class OrderController {
                 new com.example.inventory.application.commands.DeliverOrderCommand(id));
         orderWebSocketService.publishOrderUpdate(id, Map.of("orderId", id, "status", orderResponse.status()));
         return ResponseEntity.ok(orderMapper.toWebResponse(orderResponse));
+    }
+
+    @GetMapping("/fulfillment/orders")
+    @PreAuthorize("hasAnyRole('WAREHOUSE', 'ADMIN')")
+    @Operation(summary = "Fulfillment queue", description = "Lists PAID/SHIPPED/DELIVERED orders across all customers for warehouse processing.")
+    @ApiResponse(responseCode = "200", description = "Fulfillment queue returned")
+    public ResponseEntity<List<com.example.inventory.web.dto.OrderResponse>> fulfillmentQueue(
+            @Parameter(description = "Optional status filter (PAID, SHIPPED, DELIVERED)") @RequestParam(required = false) String status) {
+        return ResponseEntity.ok(fulfillmentQueueQueryHandler.handle(status)
+                .stream().map(orderMapper::toWebResponse).toList());
     }
 
     private boolean isAdmin(Authentication authentication) {

@@ -17,7 +17,9 @@ public class ListOrdersQueryHandler {
     }
 
     public List<OrderResponse> handle(ListOrdersQuery query) {
-        List<Order> orders = orderRepository.findByCustomerId(query.customerId());
+        List<Order> orders = query.customerId() == null
+                ? orderRepository.findAll()
+                : orderRepository.findByCustomerId(query.customerId());
         return orders.stream()
                 .filter(order -> query.status() == null || order.getStatus().name().equalsIgnoreCase(query.status()))
                 .map(order -> new OrderResponse(order.getId(), order.getCustomerId(), order.getStatus().name(), order

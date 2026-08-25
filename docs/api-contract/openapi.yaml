@@ -1092,6 +1092,54 @@ paths:
             '*/*':
               schema:
                 type: string
+  /api/fulfillment/orders:
+    get:
+      tags:
+      - Orders
+      summary: Fulfillment queue
+      description: Lists PAID/SHIPPED/DELIVERED orders across all customers for warehouse
+        processing.
+      operationId: fulfillmentQueue
+      parameters:
+      - name: status
+        in: query
+        description: "Optional status filter (PAID, SHIPPED, DELIVERED)"
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Fulfillment queue returned
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OrderResponse"
+  /fulfillment/orders:
+    get:
+      tags:
+      - Orders
+      summary: Fulfillment queue
+      description: Lists PAID/SHIPPED/DELIVERED orders across all customers for warehouse
+        processing.
+      operationId: fulfillmentQueue_1
+      parameters:
+      - name: status
+        in: query
+        description: "Optional status filter (PAID, SHIPPED, DELIVERED)"
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Fulfillment queue returned
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OrderResponse"
   /api/admin/audit/products/{id}:
     get:
       tags:
