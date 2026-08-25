@@ -128,7 +128,7 @@ class ReservationCountdownIntegrationTest {
 
         BlockingQueue<String> receivedMessages = new ArrayBlockingQueue<>(1);
 
-        StompSession session = stompClient.connect(
+        StompSession session = stompClient.connectAsync(
                 "ws://localhost:" + port + "/api/ws",
                 new WebSocketHttpHeaders(),
                 connectHeaders,

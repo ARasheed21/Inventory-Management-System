@@ -24,7 +24,6 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.inventory.infrastructure.security.JwtService;
 import com.example.inventory.infrastructure.security.LoginRateLimiter;
 import com.example.inventory.infrastructure.security.UserRegistry;
-import com.example.inventory.web.dto.AuthResponse;
 import com.example.inventory.web.dto.LoginRequest;
 import com.example.inventory.web.dto.RefreshRequest;
 import com.example.inventory.web.dto.RegisterRequest;

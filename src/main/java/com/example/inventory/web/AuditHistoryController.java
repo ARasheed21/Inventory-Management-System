@@ -74,10 +74,11 @@ public class AuditHistoryController {
         return ResponseEntity.ok(readHistory(OrderJpaEntity.class, order.getId()));
     }
 
+    @SuppressWarnings("unchecked")
     private List<AuditEntryResponse> readHistory(Class<?> entityType, Long internalId) {
         AuditReader auditReader = AuditReaderFactory.get(entityManager);
         List<Map<String, Object>> rows = new ArrayList<>();
-        List<Number> revisions = auditReader.createQuery()
+        List<Number> revisions = (List<Number>) (List<?>) auditReader.createQuery()
                 .forRevisionsOfEntity(entityType, false, true)
                 .add(AuditEntity.id().eq(internalId))
                 .getResultList();

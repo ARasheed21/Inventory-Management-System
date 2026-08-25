@@ -58,7 +58,7 @@ class PaymentFailureNotificationIntegrationTest {
         StompHeaders connectHeaders = new StompHeaders();
         connectHeaders.add("Authorization", "Bearer " + accessToken);
 
-        StompSession session = stompClient.connect(
+        StompSession session = stompClient.connectAsync(
                 "ws://localhost:" + port + "/api/ws",
                 new WebSocketHttpHeaders(),
                 connectHeaders,
